@@ -1,8 +1,31 @@
+/.env
+/.env.*
+!/.env.example
 *.log
+*.stackdump
+*.tmp
+*.bak
 .DS_Store
-.env
-.env.backup
-.env.production
+Thumbs.db
+
+# Dependencies
+/vendor/
+/node_modules/
+
+# Laravel generated files
+/bootstrap/cache/*.php
+/public/build/
+/public/hot
+/public/storage
+/storage/*.key
+/storage/app/public/
+/storage/framework/cache/data/
+/storage/framework/sessions/
+/storage/framework/testing/
+/storage/framework/views/
+/storage/logs/
+
+# Local tools and IDE files
 .phpactor.json
 .phpunit.result.cache
 /.fleet
@@ -12,13 +35,10 @@
 /.vscode
 /.zed
 /auth.json
-/node_modules
-/public/build
-/public/hot
-/public/storage
-/storage/*.key
 /storage/pail
-/vendor
 Homestead.json
 Homestead.yaml
-Thumbs.db
+
+# Local database files
+/database/*.sqlite
+/database/*.sqlite-journal

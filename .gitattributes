@@ -1,11 +1,30 @@
 * text=auto eol=lf
 
-*.blade.php diff=html
-*.css diff=css
-*.html diff=html
-*.md diff=markdown
-*.php diff=php
+# Keep source files normalized across Windows and Unix environments.
+*.php text eol=lf
+*.blade.php text eol=lf diff=html
+*.css text eol=lf diff=css
+*.js text eol=lf diff=javascript
+*.json text eol=lf diff=json
+*.md text eol=lf diff=markdown
+*.yml text eol=lf
+*.yaml text eol=lf
 
+# Binary assets must not be modified by Git's text conversion.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+
+*.html diff=html
+
+# Do not include local-only metadata in source archives.
 /.github export-ignore
+/.env export-ignore
+/.env.* export-ignore
+!.env.example export-ignore
 CHANGELOG.md export-ignore
 .styleci.yml export-ignore
