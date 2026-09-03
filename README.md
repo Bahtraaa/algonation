@@ -126,3 +126,4 @@ Beri nama koneksi, misalnya **`PERABOTAN RUMAHKU`** agar mudah dikenali.
 Aplikasi ini open-source dan bebas digunakan untuk pembelajaran & pengembangan.
 
 # algo_nation
+# algo_nation
