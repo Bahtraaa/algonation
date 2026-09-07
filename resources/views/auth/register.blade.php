@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Daftar — ALGO NATION')
+@section('title', 'Daftar - ALGO NATION')
 
 @section('content')
     <div class="mx-auto grid min-h-[80vh] max-w-7xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:px-8">
@@ -96,15 +96,15 @@
                         <p class="mt-3 text-sm text-slate-600 dark:text-slate-400">Akses ribuan produk fashion dengan harga terbaik, plus promo eksklusif untuk member.</p>
                         <div class="mt-6 space-y-3">
                             <div class="flex items-center gap-3 rounded-xl bg-white/60 p-3 dark:bg-white/5">
-                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-ink">🎁</span>
+                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-ink"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7z"/></svg></span>
                                 <span class="text-sm font-medium">Promo & diskon khusus member</span>
                             </div>
                             <div class="flex items-center gap-3 rounded-xl bg-white/60 p-3 dark:bg-white/5">
-                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-ink">📦</span>
+                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-ink"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8v8a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4A2 2 0 0 1 21 8z"/><path d="M3.3 7l8.7 5 8.7-5"/><path d="M12 22V12"/></svg></span>
                                 <span class="text-sm font-medium">Riwayat pesanan tersimpan rapi</span>
                             </div>
                             <div class="flex items-center gap-3 rounded-xl bg-white/60 p-3 dark:bg-white/5">
-                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-ink">🤝</span>
+                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-ink"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
                                 <span class="text-sm font-medium">Layanan pelanggan responsif</span>
                             </div>
                         </div>

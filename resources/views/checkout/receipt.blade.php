@@ -1,16 +1,44 @@
 @extends('layouts.app')
 
-@section('title', 'Struk Pesanan — ALGO NATION')
+@section('title', 'Struk Pesanan - ALGO NATION')
 
 @section('content')
     <div class="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
-        {{-- Success header --}}
+        {{-- Header --}}
         <div class="mb-8 text-center no-print animate-scale-in">
-            <div class="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-soft">
-                <svg class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <div class="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full {{ ($transaction->payment_status ?? 'pending') === 'paid' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-soft' }}">
+                @if (($transaction->payment_status ?? 'pending') === 'paid')
+                    <svg class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                @else
+                    <svg class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                @endif
             </div>
-            <h1 class="font-display text-2xl font-extrabold sm:text-3xl">Pesanan Berhasil Dibuat! 🎉</h1>
-            <p class="mt-2 text-sm text-slate-500">Terima kasih telah berbelanja di ALGO NATION. Pembayaran dilakukan saat barang tiba.</p>
+
+            @if (($transaction->payment_status ?? 'pending') === 'paid')
+                <h1 class="font-display text-2xl font-extrabold sm:text-3xl">Pembayaran Berhasil</h1>
+                <p class="mt-2 text-sm text-slate-500">Terima kasih telah berbelanja di ALGO NATION. Pesanan Anda sedang diproses.</p>
+            @elseif (($transaction->payment_status ?? 'pending') === 'failed')
+                <h1 class="font-display text-2xl font-extrabold sm:text-3xl">Pembayaran Gagal</h1>
+                <p class="mt-2 text-sm text-slate-500">Pembayaran Anda tidak berhasil. Silakan coba lagi atau pilih metode pembayaran lain dari halaman Pesanan Saya.</p>
+            @elseif (($transaction->payment_status ?? 'pending') === 'expired')
+                <h1 class="font-display text-2xl font-extrabold sm:text-3xl">Pembayaran Kedaluwarsa</h1>
+                <p class="mt-2 text-sm text-slate-500">Pesanan dibatalkan karena pembayaran tidak diselesaikan dalam 15 menit. Pesanan Anda masih tersimpan. Anda dapat membayar kembali dari halaman Pesanan Saya.</p>
+            @elseif (($transaction->payment_status ?? 'pending') === 'cancelled')
+                <h1 class="font-display text-2xl font-extrabold sm:text-3xl">Pembayaran Dibatalkan</h1>
+                <p class="mt-2 text-sm text-slate-500">Pembayaran telah dibatalkan.</p>
+            @else
+                <h1 class="font-display text-2xl font-extrabold sm:text-3xl">Menunggu Proses Pembayaran</h1>
+                <p class="mt-2 text-sm text-slate-500">Pesanan Anda sedang menunggu pembayaran online. Silakan selesaikan pembayaran melalui payment yang tersedia agar pesanan diproses. Tekan 'Pesanan Saya' jika ingin membatalkan pesanan.</p>
+            @endif
+
+            @if (($transaction->payment_status ?? 'pending') === 'pending')
+                <div class="mt-4 px-4 py-3 text-sm" data-payment-countdown data-due-at="{{ optional($transaction->payment_due_at)->toIso8601String() }}">
+                    <span class="font-semibold">Batas waktu pembayaran:</span>
+                    <span class="font-mono font-bold text-primary" data-countdown-display>--:--</span>
+                    <span class="block mt-1 text-xs text-amber-600 dark:text-amber-400">Pesanan dibatalkan otomatis jika tidak dibayar dalam 15 menit.</span>
+                </div>
+            @endif
+
             <div class="mt-5 flex flex-wrap justify-center gap-3">
                 <button onclick="window.print()" class="btn-primary">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2z"/></svg>
@@ -45,12 +73,18 @@
                     </div>
                     <div>
                         <p class="text-xs uppercase tracking-wider text-slate-400">Pembayaran</p>
-                        <p class="font-bold">Cash on Delivery</p>
+                        <p class="font-bold">{{ $transaction->payment_method_label }}</p>
                     </div>
                     <div>
-                        <p class="text-xs uppercase tracking-wider text-slate-400">Status</p>
-                        <span class="badge {{ $transaction->status_class }}">{{ ucfirst($transaction->status) }}</span>
+                        <p class="text-xs uppercase tracking-wider text-slate-400">Status Pembayaran</p>
+                        <x-status-badge :variant="$transaction->payment_status_class">{{ $transaction->payment_status_label }}</x-status-badge>
                     </div>
+                    @if ($transaction->paid_at)
+                        <div>
+                            <p class="text-xs uppercase tracking-wider text-slate-400">Dibayar Pada</p>
+                            <p class="font-bold">{{ $transaction->paid_at->format('d M Y, H:i') }}</p>
+                        </div>
+                    @endif
                     <div class="col-span-2">
                         <p class="text-xs uppercase tracking-wider text-slate-400">Dikirim Ke</p>
                         <p class="whitespace-pre-line font-semibold">{{ $transaction->shipping_address }}</p>
@@ -113,10 +147,26 @@
 
             {{-- Footer note --}}
             <div class="border-t border-slate-100 px-8 py-6 text-center dark:border-white/10">
-                <p class="text-xs text-slate-500">Siapkan uang pas saat kurir tiba. Simpan struk ini sebagai bukti pembelian.</p>
-                <p class="mt-1 text-xs font-semibold text-slate-400">Terima kasih telah berbelanja di ALGO NATION! 🙏</p>
+                <p class="text-xs text-slate-500">
+                @if (($transaction->payment_status ?? 'pending') === 'paid')
+                    Pembayaran telah terkonfirmasi oleh payment gateway.
+                @else
+                    Status pembayaran diperbarui otomatis oleh payment gateway. Harap tunggu.
+                @endif
+                Simpan struk ini sebagai bukti pembelian.
+            </p>
+                <p class="mt-1 text-xs font-semibold text-slate-400">Terima kasih telah berbelanja di ALGO NATION!</p>
             </div>
         </div>
     </div>
 @endsection
 
+@push('scripts')
+@if ($transaction->payment_method === 'midtrans' && ($transaction->payment_status ?? 'pending') === 'pending')
+<script>
+    // Shared display-only payment deadline countdown; expiry is enforced in the
+    // backend via payment_due_at.
+    window.startPaymentCountdown();
+</script>
+@endif
+@endpush

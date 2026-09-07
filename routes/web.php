@@ -1,10 +1,14 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\FeaturedProductController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\SalesController;
+use App\Http\Controllers\Admin\ShippingController;
 use App\Http\Controllers\Admin\StockController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\FlashSaleController;
+use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
@@ -24,6 +28,11 @@ Route::get('/featured', [HomeController::class, 'featured'])->name('featured');
 Route::get('/flash-sale', [HomeController::class, 'flashSale'])->name('flash-sale');
 Route::get('/about-us', [HomeController::class, 'about'])->name('about');
 Route::get('/products/{product}', [HomeController::class, 'show'])->name('products.show');
+
+Route::prefix('api/flash-sales')->group(function () {
+    Route::get('/', [FlashSaleController::class, 'apiIndex']);
+    Route::get('/{flashSale}', [FlashSaleController::class, 'apiShow']);
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -56,12 +65,24 @@ Route::middleware('auth')->group(function () {
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
 
     Route::get('/orders', [CheckoutController::class, 'orders'])->name('orders');
+    Route::get('/orders/{transaction}', [CheckoutController::class, 'orderDetail'])->name('orders.show');
 
     Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout');
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+    Route::post('/api/shipping/estimate', [CheckoutController::class, 'estimateShipping'])->name('shipping.estimate');
     Route::get('/receipt/{transaction}', [CheckoutController::class, 'receipt'])->name('checkout.receipt');
+    Route::post('/orders/{transaction}/pay', [CheckoutController::class, 'pay'])->name('orders.pay');
+    Route::post('/orders/{transaction}/check-status', [CheckoutController::class, 'checkStatus'])->name('orders.check-status');
     Route::delete('/orders/{transaction}/cancel', [CheckoutController::class, 'cancel'])->name('orders.cancel');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Midtrans Notification (Webhook)
+|--------------------------------------------------------------------------
+*/
+
+Route::post('/midtrans/notification', [CheckoutController::class, 'notification'])->name('midtrans.notification');
 
 /*
 |--------------------------------------------------------------------------
@@ -88,7 +109,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard.index');
 
     // Product management
-    Route::resource('products', AdminProductController::class)->except(['show']);
+    Route::resource('products', AdminProductController::class)->except(['show', 'create']);
     Route::post('products/{product}/stock', [AdminProductController::class, 'addStock'])->name('products.stock');
     Route::post('products/{product}/variants', [AdminProductController::class, 'storeVariant'])->name('products.variants.store');
     Route::put('variants/{variant}', [AdminProductController::class, 'updateVariant'])->name('products.variants.update');
@@ -109,5 +130,38 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('users', [UserController::class, 'store'])->name('users.store');
     Route::patch('users/{user}/role', [UserController::class, 'updateRole'])->name('users.role');
     Route::patch('users/{user}/status', [UserController::class, 'toggleStatus'])->name('users.status');
+
+    // Order / Shipping management
+    Route::get('orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('orders/{transaction}', [OrderController::class, 'show'])->name('orders.show');
+    Route::put('orders/{transaction}/shipping', [OrderController::class, 'updateShipping'])->name('orders.shipping.update');
+
+    // Flash sale management
+    Route::get('flash-sales', [FlashSaleController::class, 'index'])->name('flash-sales.index');
+    Route::post('flash-sales', [FlashSaleController::class, 'store'])->name('flash-sales.store');
+    Route::put('flash-sales/{flashSale}', [FlashSaleController::class, 'update'])->name('flash-sales.update');
+    Route::delete('flash-sales/{flashSale}', [FlashSaleController::class, 'destroy'])->name('flash-sales.destroy');
+    Route::patch('flash-sales/{flashSale}/status', [FlashSaleController::class, 'toggle'])->name('flash-sales.status');
+
+    // Featured products (Produk Unggulan) — references existing products only.
+    Route::get('featured-products', [FeaturedProductController::class, 'index'])->name('featured-products.index');
+    Route::post('featured-products', [FeaturedProductController::class, 'store'])->name('featured-products.store');
+    Route::put('featured-products/{featuredProduct}', [FeaturedProductController::class, 'update'])->name('featured-products.update');
+    Route::delete('featured-products/{featuredProduct}', [FeaturedProductController::class, 'destroy'])->name('featured-products.destroy');
+
+    // Shipping configuration (origin, zones, international regions, couriers).
+    Route::get('shipping', [ShippingController::class, 'index'])->name('shipping.index');
+    Route::put('shipping/settings', [ShippingController::class, 'updateSettings'])->name('shipping.settings.update');
+    Route::post('shipping/zones', [ShippingController::class, 'storeZone'])->name('shipping.zones.store');
+    Route::put('shipping/zones/{zone}', [ShippingController::class, 'updateZone'])->name('shipping.zones.update');
+    Route::delete('shipping/zones/{zone}', [ShippingController::class, 'destroyZone'])->name('shipping.zones.destroy');
+    Route::post('shipping/regions', [ShippingController::class, 'storeRegion'])->name('shipping.regions.store');
+    Route::put('shipping/regions/{region}', [ShippingController::class, 'updateRegion'])->name('shipping.regions.update');
+    Route::delete('shipping/regions/{region}', [ShippingController::class, 'destroyRegion'])->name('shipping.regions.destroy');
+    Route::post('shipping/countries', [ShippingController::class, 'storeCountry'])->name('shipping.countries.store');
+    Route::put('shipping/countries/{country}', [ShippingController::class, 'updateCountry'])->name('shipping.countries.update');
+    Route::delete('shipping/countries/{country}', [ShippingController::class, 'destroyCountry'])->name('shipping.countries.destroy');
+    Route::post('shipping/couriers', [ShippingController::class, 'storeCourier'])->name('shipping.couriers.store');
+    Route::delete('shipping/couriers/{courier}', [ShippingController::class, 'destroyCourier'])->name('shipping.couriers.destroy');
 });
 

@@ -83,28 +83,23 @@ document.addEventListener('alpine:init', () => {
         async refresh() {
             try {
                 const res = await axios.get('/cart/state');
-                this.items = res.data.items || [];
-                this.count = res.data.count || 0;
-                this.subtotal = res.data.subtotal || 0;
-                this.total = res.data.total || 0;
+                this.syncState(res.data);
             } catch (e) {
                 console.error('Cart refresh failed', e);
             }
         },
 
-        async add(productId, variantId = null, quantity = 1) {
+        async add(productId, variantId = null, quantity = 1, flashSaleId = null) {
             this.loading = true;
             try {
                 const res = await axios.post('/cart/add', {
                     product_id: productId,
                     variant_id: variantId,
                     quantity: quantity,
+                    flash_sale_id: flashSaleId,
                 });
                 if (res.data.success) {
-                    this.items = res.data.cart.items;
-                    this.count = res.data.cart.count;
-                    this.subtotal = res.data.cart.subtotal;
-                    this.total = res.data.cart.total;
+                    this.syncState(res.data.cart);
                     window.toast(res.data.message, 'success');
                     this.open = true;
                 }
@@ -123,10 +118,7 @@ document.addEventListener('alpine:init', () => {
             if (qty < 1) return;
             try {
                 const res = await axios.post('/cart/update', { key, quantity: qty });
-                this.items = res.data.cart.items;
-                this.count = res.data.cart.count;
-                this.subtotal = res.data.cart.subtotal;
-                this.total = res.data.cart.total;
+                this.syncState(res.data.cart);
             } catch (e) {
                 window.toast('Gagal memperbarui keranjang', 'error');
             }
@@ -135,10 +127,7 @@ document.addEventListener('alpine:init', () => {
         async remove(key) {
             try {
                 const res = await axios.post('/cart/remove', { key });
-                this.items = res.data.cart.items;
-                this.count = res.data.cart.count;
-                this.subtotal = res.data.cart.subtotal;
-                this.total = res.data.cart.total;
+                this.syncState(res.data.cart);
                 window.toast('Item dihapus', 'info');
             } catch (e) {
                 window.toast('Gagal menghapus item', 'error');
@@ -148,14 +137,18 @@ document.addEventListener('alpine:init', () => {
         async clear() {
             try {
                 const res = await axios.post('/cart/clear');
-                this.items = [];
-                this.count = 0;
-                this.subtotal = 0;
-                this.total = 0;
+                this.syncState(res.data.cart);
                 window.toast('Keranjang dikosongkan', 'info');
             } catch (e) {
                 window.toast('Gagal mengosongkan keranjang', 'error');
             }
+        },
+
+        syncState(payload) {
+            this.items = payload?.items || [];
+            this.count = payload?.count || 0;
+            this.subtotal = payload?.subtotal || 0;
+            this.total = payload?.total || 0;
         },
     });
 
@@ -189,7 +182,112 @@ document.addEventListener('alpine:init', () => {
             this.confirmAction = null;
         },
     });
+
+    // Flash-sale countdown component (hh:mm:ss label until the sale ends).
+    Alpine.data('flashSaleCountdown', (endAt) => ({
+        label: 'Berakhir dalam 00 : 00 : 00',
+        timer: null,
+        start() {
+            const tick = () => {
+                const seconds = Math.max(0, Math.floor((Date.parse(endAt) - Date.now()) / 1000));
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                const remaining = seconds % 60;
+                this.label = seconds > 0
+                    ? `Berakhir dalam ${String(hours).padStart(2, '0')} : ${String(minutes).padStart(2, '0')} : ${String(remaining).padStart(2, '0')}`
+                    : 'Flash Sale Berakhir';
+                if (seconds === 0 && this.timer) { clearInterval(this.timer); window.location.reload(); }
+            };
+            tick();
+            this.timer = setInterval(tick, 1000);
+        },
+    }));
 });
+
+// ---------------- Payment helpers ----------------
+
+// Start the singleton payment deadline countdown shown on receipts and order
+// detail pages. Displays mm:ss and reloads the page when the deadline passes so
+// the true status from the database is shown.
+window.startPaymentCountdown = () => {
+    const box = document.querySelector('[data-payment-countdown]');
+    if (!box) return;
+
+    const display = box.querySelector('[data-countdown-display]');
+    const dueAt = Date.parse(box.getAttribute('data-due-at'));
+
+    const tick = () => {
+        if (!dueAt) { display.textContent = '--:--'; return; }
+
+        const diff = dueAt - Date.now();
+        if (diff <= 0) { display.textContent = '00:00'; window.location.reload(); return; }
+
+        const totalSec = Math.ceil(diff / 1000);
+        const m = String(Math.floor(totalSec / 60)).padStart(2, '0');
+        const s = String(totalSec % 60).padStart(2, '0');
+        display.textContent = m + ':' + s;
+    };
+
+    tick();
+    setInterval(tick, 1000);
+};
+
+// Start every inline payment deadline timer that carries [data-countdown-due].
+window.startDueCountdowns = () => {
+    document.querySelectorAll('[data-countdown-due]').forEach((el) => {
+        const dueAt = Date.parse(el.getAttribute('data-countdown-due'));
+
+        const tick = () => {
+            if (!dueAt) { el.textContent = '--:--'; return; }
+            if (dueAt - Date.now() <= 0) { el.textContent = '00:00'; return; }
+
+            const totalSec = Math.ceil((dueAt - Date.now()) / 1000);
+            const m = String(Math.floor(totalSec / 60)).padStart(2, '0');
+            const s = String(totalSec % 60).padStart(2, '0');
+            el.textContent = m + ':' + s;
+        };
+
+        tick();
+        setInterval(tick, 1000);
+    });
+};
+
+// Wire every ".pay-now-btn" button to open the Midtrans Snap popup.
+// The snap callbacks only drive UI redirection; payment verification is always
+// handled server-side by the Midtrans webhook.
+window.initPayNowButtons = () => {
+    document.querySelectorAll('.pay-now-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const url = btn.dataset.payUrl;
+            const csrf = btn.dataset.csrf;
+            btn.disabled = true;
+
+            fetch(url, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error || data.errors) {
+                    alert(data.error || Object.values(data.errors).flat().join('\n'));
+                    btn.disabled = false;
+                    return;
+                }
+
+                snap.pay(data.snap_token, {
+                    onSuccess: () => { window.location.href = data.redirect_url; },
+                    onPending: () => { window.location.href = data.redirect_url; },
+                    onError: () => { alert('Pembayaran gagal. Silakan coba lagi.'); btn.disabled = false; },
+                    onClose: () => { window.location.href = data.redirect_url; },
+                });
+            })
+            .catch(() => {
+                alert('Terjadi kesalahan. Silakan coba lagi.');
+                btn.disabled = false;
+            });
+        });
+    });
+};
 
 // Re-hydrate cart count on load
 document.addEventListener('DOMContentLoaded', () => {

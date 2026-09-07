@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\FlashSale;
+use App\Services\CartService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -10,6 +12,11 @@ use Illuminate\Support\Facades\Auth;
 
 class CartController extends Controller
 {
+    public function __construct(
+        private readonly CartService $cartService,
+    ) {
+    }
+
     /**
      * Return the current cart state from the session.
      */
@@ -17,12 +24,7 @@ class CartController extends Controller
     {
         $cart = $request->session()->get('cart', []);
 
-        return response()->json([
-            'items'       => array_values($cart),
-            'count'       => $this->count($cart),
-            'subtotal'    => $this->subtotal($cart),
-            'total'       => $this->total($cart),
-        ]);
+        return response()->json($this->cartService->toArray($cart));
     }
 
     /**
@@ -30,6 +32,8 @@ class CartController extends Controller
      */
     public function add(Request $request): JsonResponse
     {
+        FlashSale::syncAllStatuses();
+
         if (! Auth::check()) {
             return response()->json([
                 'success'  => false,
@@ -39,21 +43,25 @@ class CartController extends Controller
         }
 
         $data = $request->validate([
-            'product_id' => ['required', 'integer', 'exists:products,id'],
-            'variant_id' => ['nullable', 'integer', 'exists:product_variants,id'],
-            'quantity'   => ['required', 'integer', 'min:1', 'max:99'],
+            'product_id'    => ['required', 'integer', 'exists:products,id'],
+            'variant_id'    => ['nullable', 'integer', 'exists:product_variants,id'],
+            'quantity'      => ['required', 'integer', 'min:1', 'max:99'],
+            'flash_sale_id' => ['nullable', 'integer', 'exists:flash_sales,id'],
         ]);
 
-        $product = Product::with('variants')->findOrFail($data['product_id']);
+        $product = Product::with('variants', 'activeFlashSale')->findOrFail($data['product_id']);
 
         $variantId = $data['variant_id'] ?? null;
         $variant   = $variantId ? $product->variants->firstWhere('id', $variantId) : null;
 
-        $price  = (float) ($variant->price ?? $product->price);
-        $name   = $product->name;
-        $stock  = $variant?->stock ?? $product->stock;
+        // The cart is server-authoritative about flash-sale pricing: when the
+        // product currently has an active flash sale, that price is ALWAYS used
+        // regardless of whether the client sent a flash_sale_id. This keeps the
+        // price consistent across every page (shop, featured, landing, detail).
+        $flashSale = $product->activeFlashSale;
 
-        $quantity = min((int) $data['quantity'], max(1, $stock));
+        $price = (float) ($flashSale?->sale_price ?? $variant?->price ?? $product->price);
+        $stock = $flashSale ? min($flashSale->stock, $variant?->stock ?? $product->stock) : ($variant?->stock ?? $product->stock);
 
         if ($stock <= 0) {
             return response()->json([
@@ -62,25 +70,27 @@ class CartController extends Controller
             ], 422);
         }
 
+        $quantity = min((int) $data['quantity'], max(1, $stock));
+
         $cart = $request->session()->get('cart', []);
 
-        $key = $product->id.($variantId ? '-'.$variantId : '');
+        $cartKey = $product->id.($variantId ? '-'.$variantId : '');
 
-        if (isset($cart[$key])) {
-            $newQty = min($cart[$key]['quantity'] + $quantity, $stock);
-            $cart[$key]['quantity'] = $newQty;
+        if (isset($cart[$cartKey])) {
+            $cart[$cartKey]['quantity'] = min($cart[$cartKey]['quantity'] + $quantity, $stock);
         } else {
-            $cart[$key] = [
-                'key'        => $key,
-                'product_id' => $product->id,
-                'variant_id' => $variantId,
-                'name'       => $name,
-                'variant'    => $variant?->name,
-                'image'      => $product->image_url,
-                'price'      => $price,
-                'quantity'   => $quantity,
-                'stock'      => $stock,
-                'category'   => $product->category,
+            $cart[$cartKey] = [
+                'key'           => $cartKey,
+                'product_id'    => $product->id,
+                'variant_id'    => $variantId,
+                'name'          => $product->name,
+                'variant'       => $variant?->name,
+                'image'         => $product->image_url,
+                'price'         => $price,
+                'quantity'      => $quantity,
+                'stock'         => $stock,
+                'category'      => $product->category,
+                'flash_sale_id' => $flashSale?->id,
             ];
         }
 
@@ -89,12 +99,7 @@ class CartController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Produk ditambahkan ke keranjang!',
-            'cart'    => [
-                'items'    => array_values($cart),
-                'count'    => $this->count($cart),
-                'subtotal' => $this->subtotal($cart),
-                'total'    => $this->total($cart),
-            ],
+            'cart'    => $this->cartService->toArray($cart),
         ]);
     }
 
@@ -123,12 +128,7 @@ class CartController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Keranjang diperbarui.',
-            'cart'    => [
-                'items'    => array_values($cart),
-                'count'    => $this->count($cart),
-                'subtotal' => $this->subtotal($cart),
-                'total'    => $this->total($cart),
-            ],
+            'cart'    => $this->cartService->toArray($cart),
         ]);
     }
 
@@ -149,12 +149,7 @@ class CartController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Item dihapus dari keranjang.',
-            'cart'    => [
-                'items'    => array_values($cart),
-                'count'    => $this->count($cart),
-                'subtotal' => $this->subtotal($cart),
-                'total'    => $this->total($cart),
-            ],
+            'cart'    => $this->cartService->toArray($cart),
         ]);
     }
 
@@ -168,53 +163,7 @@ class CartController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Keranjang dikosongkan.',
-            'cart'    => ['items' => [], 'count' => 0, 'subtotal' => 0, 'total' => 0],
+            'cart'    => $this->cartService->toArray([]),
         ]);
     }
-
-    /**
-     * Total number of items.
-     */
-    protected function count(array $cart): int
-    {
-        return array_sum(array_column($cart, 'quantity'));
-    }
-
-    /**
-     * Subtotal without shipping.
-     */
-    protected function subtotal(array $cart): float
-    {
-        return round(array_sum(array_map(
-            fn ($item) => $item['price'] * $item['quantity'],
-            $cart
-        )), 2);
-    }
-
-    /**
-     * Total (subtotal + delivery fee).
-     */
-    protected function total(array $cart): float
-    {
-        return round($this->subtotal($cart) + $this->shippingCost($this->subtotal($cart)), 2);
-    }
-
-    /**
-     * Flat-rate delivery estimate: free above Rp 500.000, otherwise Rp 25.000.
-     */
-    public static function shippingCost(float $subtotal): float
-    {
-        return $subtotal >= 500000 ? 0 : 25000;
-    }
-
-    /**
-     * Estimated delivery time in days based on subtotal / city.
-     */
-    public static function estimatedDays(string $city = ''): int
-    {
-        return in_array(strtolower(trim($city)), ['jakarta', 'bandung', 'surabaya', 'yogyakarta', 'semarang'])
-            ? 2
-            : 4;
-    }
 }
-

@@ -79,11 +79,8 @@ class UserController extends Controller
         ]);
 
         // Prevent demoting the last active admin.
-        if ($user->isAdmin() && $data['role'] === 'user') {
-            $adminCount = User::where('role', 'admin')->where('status', 'active')->count();
-            if ($adminCount <= 1) {
-                return back()->with('error', 'Tidak dapat menghapus admin terakhir.');
-            }
+        if ($data['role'] === 'user' && $user->isLastActiveAdmin()) {
+            return back()->with('error', 'Tidak dapat menghapus admin terakhir.');
         }
 
         $user->update($data);
@@ -102,11 +99,8 @@ class UserController extends Controller
         }
 
         // Prevent disabling the last active admin.
-        if ($user->isAdmin() && $user->isActive()) {
-            $adminCount = User::where('role', 'admin')->where('status', 'active')->count();
-            if ($adminCount <= 1) {
-                return back()->with('error', 'Tidak dapat menonaktifkan admin terakhir.');
-            }
+        if ($user->isActive() && $user->isLastActiveAdmin()) {
+            return back()->with('error', 'Tidak dapat menonaktifkan admin terakhir.');
         }
 
         $user->update([

@@ -62,7 +62,7 @@
                             </form>
                         </td>
                         <td>
-                            <span class="badge {{ $user->status_class }}">{{ ucfirst($user->status) }}</span>
+                            <x-status-badge :variant="$user->status_class">{{ ucfirst($user->status) }}</x-status-badge>
                         </td>
                         <td class="text-slate-500">{{ $user->created_at->format('d M Y') }}</td>
                         <td>

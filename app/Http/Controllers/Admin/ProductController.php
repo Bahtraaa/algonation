@@ -35,31 +35,14 @@ class ProductController extends Controller
     }
 
     /**
-     * Show the create form.
-     */
-    public function create(): View
-    {
-        $categories = Product::CATEGORIES;
-
-        return view('admin.products.create', compact('categories'));
-    }
-
-    /**
      * Store a newly created product.
      */
     public function store(Request $request): RedirectResponse
     {
-        $data = $request->validate([
-            'name'        => ['required', 'string', 'max:255'],
-            'category'    => ['required', Rule::in(Product::CATEGORIES)],
-            'description' => ['nullable', 'string'],
-            'stock'       => ['required', 'integer', 'min:0'],
-            'price'       => ['required', 'numeric', 'min:0'],
-            'image'       => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp,gif', 'max:2048'],
-        ]);
+        $data = $request->validate($this->productRules());
 
         if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('products', 'public');
+            $data['image'] = $this->storeImage($request);
         }
 
         Product::create($data);
@@ -83,20 +66,13 @@ class ProductController extends Controller
      */
     public function update(Request $request, Product $product): RedirectResponse
     {
-        $data = $request->validate([
-            'name'        => ['required', 'string', 'max:255'],
-            'category'    => ['required', Rule::in(Product::CATEGORIES)],
-            'description' => ['nullable', 'string'],
-            'stock'       => ['required', 'integer', 'min:0'],
-            'price'       => ['required', 'numeric', 'min:0'],
-            'image'       => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp,gif', 'max:2048'],
-        ]);
+        $data = $request->validate($this->productRules());
 
         if ($request->hasFile('image')) {
             if ($product->image) {
                 Storage::disk('public')->delete($product->image);
             }
-            $data['image'] = $request->file('image')->store('products', 'public');
+            $data['image'] = $this->storeImage($request);
         }
 
         $product->update($data);
@@ -123,9 +99,7 @@ class ProductController extends Controller
      */
     public function addStock(Request $request, Product $product): RedirectResponse
     {
-        $data = $request->validate([
-            'quantity' => ['required', 'integer', 'min:1'],
-        ]);
+        $data = $request->validate($this->stockRules());
 
         $product->increment('stock', $data['quantity']);
 
@@ -137,11 +111,7 @@ class ProductController extends Controller
      */
     public function storeVariant(Request $request, Product $product): RedirectResponse
     {
-        $data = $request->validate([
-            'name'  => ['required', 'string', 'max:255'],
-            'stock' => ['required', 'integer', 'min:0'],
-            'price' => ['nullable', 'numeric', 'min:0'],
-        ]);
+        $data = $request->validate($this->variantRules());
 
         $product->variants()->create($data);
 
@@ -153,11 +123,7 @@ class ProductController extends Controller
      */
     public function updateVariant(Request $request, ProductVariant $variant): RedirectResponse
     {
-        $data = $request->validate([
-            'name'  => ['required', 'string', 'max:255'],
-            'stock' => ['required', 'integer', 'min:0'],
-            'price' => ['nullable', 'numeric', 'min:0'],
-        ]);
+        $data = $request->validate($this->variantRules());
 
         $variant->update($data);
 
@@ -169,9 +135,7 @@ class ProductController extends Controller
      */
     public function addVariantStock(Request $request, ProductVariant $variant): RedirectResponse
     {
-        $data = $request->validate([
-            'quantity' => ['required', 'integer', 'min:1'],
-        ]);
+        $data = $request->validate($this->stockRules());
 
         $variant->increment('stock', $data['quantity']);
 
@@ -186,6 +150,61 @@ class ProductController extends Controller
         $variant->delete();
 
         return back()->with('success', 'Varian produk berhasil dihapus.');
+    }
+
+    /**
+     * Shared validation rules for creating/updating a product.
+     *
+     * @return array<string, list<string>>
+     */
+    private function productRules(): array
+    {
+        return [
+            'name'        => ['required', 'string', 'max:255'],
+            'category'    => ['required', Rule::in(Product::CATEGORIES)],
+            'description' => ['nullable', 'string'],
+            'stock'       => ['required', 'integer', 'min:0'],
+            'price'       => ['required', 'numeric', 'min:0'],
+            'weight'      => ['nullable', 'numeric', 'min:0'],
+            'length'      => ['nullable', 'numeric', 'min:0'],
+            'width'       => ['nullable', 'numeric', 'min:0'],
+            'height'      => ['nullable', 'numeric', 'min:0'],
+            'image'       => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp,gif', 'max:2048'],
+        ];
+    }
+
+    /**
+     * Shared validation rules for creating/updating a variant.
+     *
+     * @return array<string, list<string>>
+     */
+    private function variantRules(): array
+    {
+        return [
+            'name'  => ['required', 'string', 'max:255'],
+            'stock' => ['required', 'integer', 'min:0'],
+            'price' => ['nullable', 'numeric', 'min:0'],
+        ];
+    }
+
+    /**
+     * Shared validation rules for stock increments.
+     *
+     * @return array<string, list<string>>
+     */
+    private function stockRules(): array
+    {
+        return [
+            'quantity' => ['required', 'integer', 'min:1'],
+        ];
+    }
+
+    /**
+     * Persist an uploaded product image and return its storage path.
+     */
+    private function storeImage(Request $request): string
+    {
+        return $request->file('image')->store('products', 'public');
     }
 }
 

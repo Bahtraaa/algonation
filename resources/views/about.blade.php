@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'About Us — ALGO NATION')
+@section('title', 'About Us - ALGO NATION')
 
 @section('content')
     <div class="overflow-hidden">
@@ -12,7 +12,7 @@
                     <h1 class="max-w-3xl font-display text-5xl font-extrabold uppercase leading-[0.9] tracking-tight sm:text-7xl lg:text-8xl">About<br>Algo Nation</h1>
                     <p class="mt-8 max-w-xl font-display text-xl font-bold uppercase leading-tight sm:text-2xl">Wear your identity.</p>
                     <p class="mt-4 max-w-xl text-base leading-relaxed text-slate-700 dark:text-slate-300">ALGO NATION hadir untuk mereka yang percaya bahwa pakaian bukan hanya tentang apa yang kamu kenakan, tetapi bagaimana kamu mengekspresikan diri.</p>
-                    <a href="{{ route('shop') }}" class="btn-dark mt-8">Explore Our Collection <span aria-hidden="true">↗</span></a>
+                    <a href="{{ route('shop') }}" class="btn-dark mt-8">Explore Our Collection <span aria-hidden="true">→</span></a>
                 </div>
                 <div class="animate-fade-up relative min-h-64 overflow-hidden bg-ink sm:min-h-80 lg:min-h-[28rem]">
                     <img src="{{ asset('images/logo-an.png') }}" alt="Logo ALGO NATION" class="absolute inset-0 h-full w-full object-contain p-10 opacity-90" onerror="this.style.display='none';">
@@ -78,7 +78,7 @@
             <div class="mx-auto max-w-6xl px-4 py-24 text-center sm:px-6 lg:px-8 lg:py-36">
                 <p class="text-xs font-bold uppercase tracking-[0.3em] text-primary dark:text-primary-soft">05 / Brand Statement</p>
                 <blockquote class="mx-auto mt-10 max-w-5xl font-display text-5xl font-extrabold uppercase leading-[0.9] sm:text-7xl lg:text-8xl">“Don't follow the style.<br><span class="text-primary dark:text-primary-soft">Create your own.”</span></blockquote>
-                <p class="mt-12 text-xs font-bold uppercase tracking-[0.35em] text-slate-600 dark:text-slate-300">ALGO NATION — Est. 2026</p>
+                <p class="mt-12 text-xs font-bold uppercase tracking-[0.35em] text-slate-600 dark:text-slate-300">ALGO NATION - Est. 2026</p>
             </div>
         </section>
     </div>

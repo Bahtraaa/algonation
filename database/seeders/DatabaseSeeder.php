@@ -20,6 +20,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call(ShippingSeeder::class);
+
         // ---- Users ----
         $admin = User::firstOrCreate(
             ['email' => 'admin@algonation.com'],
@@ -91,6 +93,10 @@ class DatabaseSeeder extends Seeder
                 'price'       => $p['price'],
                 'stock'       => $p['stock'],
                 'image'       => null,
+                'weight'      => $p['weight'] ?? 300,
+                'length'      => $p['length'] ?? 40,
+                'width'       => $p['width'] ?? 30,
+                'height'      => $p['height'] ?? 20,
             ]);
 
             foreach ($p['variants'] as $v) {
@@ -103,6 +109,18 @@ class DatabaseSeeder extends Seeder
             }
 
             $createdProducts[] = $product;
+        }
+
+        // ---- Featured products (reference existing products only) ----
+        foreach ($createdProducts as $index => $product) {
+            if ($index >= 4) {
+                break;
+            }
+
+            \App\Models\FeaturedProduct::updateOrCreate(
+                ['product_id' => $product->id],
+                ['is_featured' => true, 'sort_order' => $index]
+            );
         }
 
         // ---- Transactions ----
@@ -135,7 +153,7 @@ class DatabaseSeeder extends Seeder
                 'user_id'          => $user->id,
                 'total_price'      => $subtotal,
                 'shipping_cost'    => $shipping,
-                'payment_method'   => 'COD',
+                'payment_method'   => 'midtrans',
                 'shipping_address' => $user->name."\n08".fake()->numerify('##########')."\nJl. ".fake()->streetName()." No. ".fake()->numberBetween(1, 200).', '.fake()->city(),
                 'status'           => $status,
                 'created_at'       => now()->subDays(fake()->numberBetween(0, 60))->subHours(fake()->numberBetween(0, 23)),

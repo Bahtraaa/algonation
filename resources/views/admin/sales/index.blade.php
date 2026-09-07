@@ -60,7 +60,7 @@
                     <th>Tanggal</th>
                     <th>Pelanggan</th>
                     <th>Pembayaran</th>
-                    <th>Status</th>
+                    <th>Status Pembayaran</th>
                     <th class="text-right">Total</th>
                 </tr>
             </thead>
@@ -78,8 +78,8 @@
                                 </div>
                             </div>
                         </td>
-                        <td><span class="badge-primary">{{ $t->payment_method }}</span></td>
-                        <td><span class="badge {{ $t->status_class }}">{{ ucfirst($t->status) }}</span></td>
+                        <td><span class="badge-primary">{{ $t->payment_method_label }}</span></td>
+                        <td><x-status-badge :variant="$t->payment_status_class">{{ $t->payment_status_label }}</x-status-badge></td>
                         <td class="text-right font-bold">Rp {{ number_format($t->total_price + $t->shipping_cost, 0, ',', '.') }}</td>
                     </tr>
                 @empty

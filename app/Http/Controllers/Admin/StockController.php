@@ -26,7 +26,7 @@ class StockController extends Controller
             $filter = $request->string('filter');
 
             if ($filter === 'low') {
-                $query->where('stock', '<=', 5);
+                $query->where('stock', '<=', Product::LOW_STOCK_THRESHOLD);
             } elseif ($filter === 'out') {
                 $query->where('stock', '<=', 0);
             }
@@ -38,16 +38,19 @@ class StockController extends Controller
 
         $products = $query->latest()->paginate(10)->withQueryString();
 
-        $categories = Product::CATEGORIES;
+        $allProducts   = Product::with('variants')->get();
+        $totalProducts = Product::count();
+        $totalStock    = Product::sum('stock') + DB::table('product_variants')->sum('stock');
+        $lowStockCount = $allProducts->filter(fn ($product) => $product->is_low_stock)->count();
+        $outOfStockCount = $allProducts->filter(fn ($product) => $product->is_out_of_stock)->count();
 
-        $stats = [
-            'total'      => Product::count(),
-'totalStock' => Product::sum('stock') + DB::table('product_variants')->sum('stock'),
-            'low'        => Product::with('variants')->get()->filter(fn ($p) => $p->is_low_stock)->count(),
-            'out'        => Product::with('variants')->get()->filter(fn ($p) => $p->is_out_of_stock)->count(),
-        ];
-
-        return view('admin.stock.index', compact('products', 'categories', 'stats'));
+        return view('admin.stock.index', compact(
+            'products',
+            'totalProducts',
+            'totalStock',
+            'lowStockCount',
+            'outOfStockCount',
+        ));
     }
 }
 

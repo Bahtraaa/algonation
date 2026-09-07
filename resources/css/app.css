@@ -69,10 +69,6 @@
 
 @layer components {
     /* Glassmorphism */
-    .glass {
-        @apply border border-white/60 bg-white/70 backdrop-blur-xl dark:border-white/10 dark:bg-white/5;
-    }
-
     .glass-strong {
         @apply border border-white/70 bg-white/80 shadow-lg shadow-slate-900/5 backdrop-blur-2xl dark:border-white/10 dark:bg-slate-900/60;
     }
@@ -189,17 +185,6 @@
         @apply bg-primary/15 text-slate-900 shadow-sm dark:bg-primary/15 dark:text-primary;
     }
 
-    /* Skeleton loading */
-    .skeleton {
-        @apply relative overflow-hidden rounded-xl bg-slate-200 dark:bg-slate-800;
-    }
-
-    .skeleton::after {
-        content: '';
-        @apply absolute inset-0 -translate-x-full animate-pulse;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
-    }
-
     /* Alert & Warning Components (Brown Modern) */
     .alert-warning {
         @apply rounded-xl border border-[#d4a574] bg-[#d4a574]/10 px-4 py-3 text-sm text-[#5c3d25] dark:border-[#8b5e3c] dark:bg-[#8b5e3c]/15 dark:text-[#e8dcc8];
@@ -246,25 +231,8 @@
         @apply bg-gradient-to-r from-[#5c3d25] via-primary to-[#a66c47] bg-clip-text text-transparent;
     }
 
-    /* Brown Color Utilities */
-    .text-brown-light { color: var(--color-primary-soft); }
-    .text-brown-dark { color: var(--color-primary-dark); }
-    .bg-brown-light { background-color: rgba(212, 165, 116, 0.1); }
-    .bg-brown-dark { background-color: rgba(74, 45, 29, 0.1); }
-    .border-brown { border-color: var(--color-primary); }
-    .border-brown-light { border-color: var(--color-primary-soft); }
-
-    /* Brown Hover States */
-    .hover\:text-brown:hover { color: var(--color-primary); }
-    .hover\:bg-brown-light:hover { background-color: rgba(212, 165, 116, 0.15); }
-    .hover\:border-brown:hover { border-color: var(--color-primary); }
-
     .animate-fade-up {
         animation: fade-up 0.6s ease-out both;
-    }
-
-    .animate-fade-in {
-        animation: fade-in 0.5s ease-out both;
     }
 
     .animate-scale-in {
@@ -275,10 +243,13 @@
         animation: float 6s ease-in-out infinite;
     }
 
+    .animate-wa-pulse {
+        animation: wa-pulse 3s ease-out infinite;
+    }
+
     .delay-75ms { animation-delay: 75ms; }
     .delay-150ms { animation-delay: 150ms; }
     .delay-300ms { animation-delay: 300ms; }
-    .delay-500ms { animation-delay: 500ms; }
 }
 
 @keyframes fade-up {
@@ -290,11 +261,6 @@
         opacity: 1;
         transform: translateY(0);
     }
-}
-
-@keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
 }
 
 @keyframes scale-in {
@@ -311,4 +277,19 @@
 @keyframes float {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-12px); }
+}
+
+@keyframes wa-pulse {
+    0% {
+        transform: scale(1);
+        opacity: 0.55;
+    }
+    70% {
+        transform: scale(1.4);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1.4);
+        opacity: 0;
+    }
 }

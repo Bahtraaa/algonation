@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Profil Saya — ALGO NATION')
+@section('title', 'Profil Saya - ALGO NATION')
 
 @section('content')
     <div class="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
@@ -12,15 +12,15 @@
         {{-- Stats --}}
         <div class="mt-8 grid grid-cols-3 gap-4">
             <div class="card-flat p-5 text-center">
-                <p class="font-display text-2xl font-extrabold text-primary dark:text-primary-soft">{{ $stats['orders'] }}</p>
+                <p class="font-display text-2xl font-extrabold text-primary dark:text-primary-soft">{{ $totalOrders }}</p>
                 <p class="mt-1 text-xs text-slate-500">Total Pesanan</p>
             </div>
             <div class="card-flat p-5 text-center">
-                <p class="font-display text-2xl font-extrabold text-primary dark:text-primary-soft">Rp {{ number_format($stats['total_spent'], 0, ',', '.') }}</p>
+                <p class="font-display text-2xl font-extrabold text-primary dark:text-primary-soft">Rp {{ number_format($totalSpent, 0, ',', '.') }}</p>
                 <p class="mt-1 text-xs text-slate-500">Total Belanja</p>
             </div>
             <div class="card-flat p-5 text-center">
-                <p class="font-display text-2xl font-extrabold text-primary dark:text-primary-soft">{{ $stats['pending'] }}</p>
+                <p class="font-display text-2xl font-extrabold text-primary dark:text-primary-soft">{{ $pendingOrders }}</p>
                 <p class="mt-1 text-xs text-slate-500">Menunggu</p>
             </div>
         </div>
@@ -84,7 +84,7 @@
                         <p class="text-xs text-slate-500">{{ $order->created_at->format('d M Y') }}</p>
                     </div>
                     <div class="flex items-center gap-3">
-                        <span class="badge {{ $order->status_class }}">{{ ucfirst($order->status) }}</span>
+                        <x-status-badge :variant="$order->payment_status_class">{{ $order->payment_status_label }}</x-status-badge>
                         <span class="text-sm font-bold">Rp {{ number_format($order->total_price + $order->shipping_cost, 0, ',', '.') }}</span>
                     </div>
                 </div>

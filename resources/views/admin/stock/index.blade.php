@@ -8,19 +8,19 @@
     <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <div class="card-flat p-5">
             <p class="text-xs text-slate-500">Total Produk</p>
-            <p class="mt-1 font-display text-2xl font-extrabold">{{ $stats['total'] }}</p>
+            <p class="mt-1 font-display text-2xl font-extrabold">{{ $totalProducts }}</p>
         </div>
         <div class="card-flat p-5">
             <p class="text-xs text-slate-500">Total Unit Stok</p>
-            <p class="mt-1 font-display text-2xl font-extrabold">{{ $stats['totalStock'] }}</p>
+            <p class="mt-1 font-display text-2xl font-extrabold">{{ $totalStock }}</p>
         </div>
         <div class="card-flat p-5">
             <p class="text-xs text-slate-500">Stok Menipis</p>
-            <p class="mt-1 font-display text-2xl font-extrabold text-primary">{{ $stats['low'] }}</p>
+            <p class="mt-1 font-display text-2xl font-extrabold text-primary">{{ $lowStockCount }}</p>
         </div>
         <div class="card-flat p-5">
             <p class="text-xs text-slate-500">Stok Habis</p>
-            <p class="mt-1 font-display text-2xl font-extrabold text-rose-600 dark:text-rose-400">{{ $stats['out'] }}</p>
+            <p class="mt-1 font-display text-2xl font-extrabold text-rose-600 dark:text-rose-400">{{ $outOfStockCount }}</p>
         </div>
     </div>
 
@@ -39,11 +39,11 @@
             </a>
             <a href="{{ route('admin.stock.index', ['filter' => 'low']) }}"
                 class="rounded-xl px-4 py-2 text-xs font-semibold {{ request('filter') === 'low' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300' }}">
-                ⚠️ Stok Menipis
+                Stok Menipis
             </a>
             <a href="{{ route('admin.stock.index', ['filter' => 'out']) }}"
                 class="rounded-xl px-4 py-2 text-xs font-semibold {{ request('filter') === 'out' ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300' }}">
-                ✖️ Stok Habis
+                Stok Habis
             </a>
         </div>
     </div>
@@ -71,7 +71,7 @@
                                 <span class="font-semibold">{{ $product->name }}</span>
                             </div>
                         </td>
-                        <td><span class="badge {{ $product->category_class }}">{{ $product->category }}</span></td>
+                        <td><x-status-badge :variant="$product->category_class">{{ $product->category }}</x-status-badge></td>
                         <td>{{ $product->stock }}</td>
                         <td>
                             @if ($product->variants->isNotEmpty())
@@ -83,7 +83,7 @@
                                     @endforeach
                                 </div>
                             @else
-                                <span class="text-xs text-slate-400">—</span>
+                                <span class="text-xs text-slate-400">-</span>
                             @endif
                         </td>
                         <td class="font-bold">{{ $product->total_stock }}</td>

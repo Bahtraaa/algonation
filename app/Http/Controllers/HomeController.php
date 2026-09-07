@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\FeaturedProduct;
 use App\Models\Product;
+use App\Models\FlashSale;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Illuminate\Support\Collection;
 
 class HomeController extends Controller
 {
@@ -13,10 +16,13 @@ class HomeController extends Controller
      */
     public function index(): View
     {
-        $categories = Product::CATEGORIES;
-        $featured   = Product::with('variants')->take(8)->get();
+        FlashSale::syncAllStatuses();
 
-        return view('landing', compact('categories', 'featured'));
+        $categories = Product::CATEGORIES;
+        $featured   = $this->featuredProducts()->take(8);
+        $flashSales = FlashSale::active()->with('product.activeFlashSale')->latest()->get();
+
+        return view('landing', compact('categories', 'featured', 'flashSales'));
     }
 
     /**
@@ -24,12 +30,17 @@ class HomeController extends Controller
      */
     public function shop(Request $request): View
     {
-        $query = Product::with('variants');
+        FlashSale::syncAllStatuses();
+
+        $query = Product::with('variants', 'activeFlashSale');
 
         if ($request->filled('search')) {
-            $query->where('name', 'like', '%'.$request->string('search').'%')
-                ->orWhere('description', 'like', '%'.$request->string('search').'%')
-                ->orWhere('category', 'like', '%'.$request->string('search').'%');
+            $query->where(function ($q) use ($request) {
+                $search = $request->string('search');
+                $q->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('description', 'like', '%'.$search.'%')
+                    ->orWhere('category', 'like', '%'.$search.'%');
+            });
         }
 
         if ($request->filled('category') && $request->string('category') !== 'all') {
@@ -44,23 +55,26 @@ class HomeController extends Controller
     }
 
     /**
-     * Featured products page.
+     * Featured products page (the real featured collection).
      */
     public function featured(): View
     {
-        $products = Product::with('variants')->take(8)->get();
+        FlashSale::syncAllStatuses();
+
+        $products = $this->featuredProducts();
 
         return view('featured', compact('products'));
     }
 
     /**
      * Flash sale products page.
+     *
+     * The list itself is rendered client-side from the /api/flash-sales
+     * endpoint, so no server-side query is needed here.
      */
     public function flashSale(): View
     {
-        $products = Product::with('variants')->take(8)->get();
-
-        return view('flash-sale', compact('products'));
+        return view('flash-sale');
     }
 
     /**
@@ -76,9 +90,9 @@ class HomeController extends Controller
      */
     public function show(Product $product): View
     {
-        $product->load('variants');
+        $product->load('variants', 'activeFlashSale');
 
-        $related = Product::with('variants')
+        $related = Product::with('variants', 'activeFlashSale')
             ->where('category', $product->category)
             ->where('id', '!=', $product->id)
             ->take(4)
@@ -86,5 +100,20 @@ class HomeController extends Controller
 
         return view('products.show', compact('product', 'related'));
     }
-}
 
+    /**
+     * The active featured products (referencing existing products), sorted by
+     * admin-defined sort_order. Returns a Collection to keep sorting trivial.
+     */
+    private function featuredProducts(): Collection
+    {
+        return FeaturedProduct::query()
+            ->with(['product.variants', 'product.activeFlashSale'])
+            ->where('is_featured', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->pluck('product')
+            ->filter();
+    }
+}

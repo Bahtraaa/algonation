@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Laporan Penjualan {{ $startDate->format('d/m/Y') }} - {{ $endDate->format('d/m/Y') }}</title>
+    <title>Laporan Penjualan {{ $startDate->format('d/m/Y') }} sampai {{ $endDate->format('d/m/Y') }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Arial, sans-serif; color: #1b1b18; font-size: 13px; padding: 40px; }
@@ -23,9 +23,10 @@
         .text-right { text-align: right; }
         .status { display: inline-block; padding: 2px 10px; border-radius: 15px; font-size: 11px; font-weight: 600; text-transform: capitalize; }
         .status-pending { background: #e8dcc8; color: #5c3d25; }
-        .status-processing { background: #dbeafe; color: #1e40af; }
-        .status-completed { background: #d1fae5; color: #065f46; }
+        .status-paid { background: #d1fae5; color: #065f46; }
+        .status-failed { background: #ffe4e6; color: #9f1239; }
         .status-cancelled { background: #ffe4e6; color: #9f1239; }
+        .status-expired { background: #fef3c7; color: #92400e; }
         .footer { margin-top: 32px; text-align: center; color: #888; font-size: 11px; border-top: 1px solid #ddd; padding-top: 16px; }
         .no-print { display: none; }
         @media print {
@@ -36,7 +37,7 @@
 </head>
 <body>
     <div class="no-print" style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:16px;">
-        <button onclick="window.print()" style="background:#8d5e42; border:none; padding:10px 20px; border-radius:8px; font-weight:700; cursor:pointer; color:#fff;">🖨️ Cetak / Simpan PDF</button>
+        <button onclick="window.print()" style="background:#8d5e42; border:none; padding:10px 20px; border-radius:8px; font-weight:700; cursor:pointer; color:#fff;">Cetak / Simpan PDF</button>
     </div>
 
     <div class="header">
@@ -47,7 +48,7 @@
         </div>
         <div class="report-meta">
             <span>Laporan Penjualan</span>
-            <strong>{{ $startDate->format('d M Y') }} — {{ $endDate->format('d M Y') }}</strong>
+            <strong>{{ $startDate->format('d M Y') }} - {{ $endDate->format('d M Y') }}</strong>
             <span>Dibuat: {{ now()->format('d M Y H:i') }}</span>
         </div>
     </div>
@@ -78,7 +79,7 @@
                 <th>Tanggal</th>
                 <th>Pelanggan</th>
                 <th>Item</th>
-                <th>Status</th>
+                <th>Status Pembayaran</th>
                 <th class="text-right">Subtotal</th>
                 <th class="text-right">Ongkir</th>
                 <th class="text-right">Total</th>
@@ -95,7 +96,7 @@
                             <div>{{ $d->product?->name ?? 'Produk' }}{{ $d->variant ? ' ('.$d->variant->name.')' : '' }} × {{ $d->quantity }}</div>
                         @endforeach
                     </td>
-                    <td><span class="status status-{{ $t->status }}">{{ $t->status }}</span></td>
+                    <td><span class="status status-{{ $t->payment_status ?? 'pending' }}">{{ ucfirst($t->payment_status ?? 'pending') }}</span></td>
                     <td class="text-right">Rp {{ number_format($t->total_price, 0, ',', '.') }}</td>
                     <td class="text-right">Rp {{ number_format($t->shipping_cost, 0, ',', '.') }}</td>
                     <td class="text-right"><strong>Rp {{ number_format($t->total_price + $t->shipping_cost, 0, ',', '.') }}</strong></td>

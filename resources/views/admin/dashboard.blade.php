@@ -16,7 +16,7 @@
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </span>
             </div>
-            <p class="mt-2 text-xs text-slate-400">Seluruh transaksi berhasil</p>
+            <p class="mt-2 text-xs text-slate-400">Hanya transaksi yang sudah dibayar</p>
         </div>
 
         <div class="card-flat animate-fade-up delay-75ms p-5">
@@ -77,12 +77,12 @@
         </div>
 
         <div class="card-flat animate-fade-up delay-150ms p-5">
-            <h3 class="mb-4 font-display font-bold">Status Pesanan</h3>
+            <h3 class="mb-4 font-display font-bold">Status Pembayaran</h3>
             <canvas id="ordersChart" class="max-h-56"></canvas>
             <div class="mt-4 space-y-2">
                 @foreach ($ordersByStatus as $status => $count)
                     <div class="flex items-center justify-between text-sm">
-                        <span class="capitalize text-slate-500">{{ $status }}</span>
+                        <span class="text-slate-500">{{ $status }}</span>
                         <span class="font-bold">{{ $count }}</span>
                     </div>
                 @endforeach
@@ -95,7 +95,7 @@
         {{-- Low stock --}}
         <div class="card-flat animate-fade-up">
             <div class="flex items-center justify-between border-b border-slate-100 p-5 dark:border-white/10">
-                <h3 class="font-display font-bold">⚠️ Stok Menipis</h3>
+                <h3 class="font-display font-bold">Stok Menipis</h3>
                 <a href="{{ route('admin.stock.index') }}" class="text-xs font-semibold text-primary hover:underline dark:text-primary-soft">Lihat semua</a>
             </div>
             <div class="divide-y divide-slate-50 dark:divide-white/5">
@@ -113,7 +113,7 @@
                         @endif
                     </div>
                 @empty
-                    <p class="p-5 text-center text-sm text-slate-500">Semua stok aman 🎉</p>
+                    <p class="p-5 text-center text-sm text-slate-500">Semua stok aman</p>
                 @endforelse
             </div>
         </div>
@@ -132,7 +132,7 @@
                             <p class="truncate text-sm font-semibold">{{ $user->name }}</p>
                             <p class="truncate text-xs text-slate-500">{{ $user->email }}</p>
                         </div>
-                        <span class="badge {{ $user->role_class }}">{{ $user->role }}</span>
+                        <x-status-badge :variant="$user->role_class">{{ $user->role }}</x-status-badge>
                     </div>
                 @empty
                     <p class="p-5 text-center text-sm text-slate-500">Belum ada pengguna.</p>
@@ -189,7 +189,7 @@
             });
         }
 
-        // Orders status doughnut
+        // Orders status doughnut - payment_status based
         const ordersCtx = document.getElementById('ordersChart');
         if (ordersCtx) {
             new Chart(ordersCtx, {
@@ -198,7 +198,7 @@
                     labels: Object.keys(@json($ordersByStatus)),
                     datasets: [{
                         data: Object.values(@json($ordersByStatus)),
-                        backgroundColor: ['#8b5e3c', '#3b82f6', '#10b981', '#f43f5e'],
+                        backgroundColor: ['#e8dcc8', '#10b981', '#f43f5e', '#f43f5e', '#f59e0b'],
                         borderWidth: 0,
                         hoverOffset: 6,
                     }],
@@ -215,4 +215,3 @@
     });
 </script>
 @endpush
-

@@ -52,7 +52,7 @@
                         </button>
                     </div>
                     <div class="mt-2 flex items-center gap-2">
-                        <button @click="$store.cart.updateQty(item.key, item.quantity - 1)" class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/5">−</button>
+                        <button @click="$store.cart.updateQty(item.key, item.quantity - 1)" class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/5" aria-label="Kurangi jumlah"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M5 12h14"/></svg></button>
                         <span class="w-8 text-center text-sm font-bold" x-text="item.quantity"></span>
                         <button @click="$store.cart.updateQty(item.key, item.quantity + 1)" class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/5">+</button>
                         <span class="ml-auto text-xs text-slate-500" x-text="`Stok: ${item.stock}`"></span>
@@ -70,7 +70,7 @@
         </div>
         <div class="mb-3 flex items-center justify-between text-sm">
             <span class="text-slate-500">Ongkir</span>
-            <span class="font-semibold" x-text="$store.cart.subtotal >= 500000 ? 'GRATIS' : formatRupiah(25000)"></span>
+            <span class="font-semibold text-slate-400">Dihitung saat checkout</span>
         </div>
         <div class="mb-4 flex items-center justify-between border-t border-dashed border-slate-200 pt-3 dark:border-white/10">
             <span class="font-bold">Total</span>
@@ -80,7 +80,7 @@
             <button @click="$store.cart.open = false" class="btn-outline flex-1">Lanjut Belanja</button>
             <a href="{{ route('checkout') }}" @click="$store.cart.open = false" class="btn-primary flex-1">Checkout</a>
         </div>
-        <p class="mt-3 text-center text-xs text-slate-400">Pembayaran Cash on Delivery (COD)</p>
+        <p class="mt-3 flex items-center justify-center gap-1.5 text-xs text-slate-400"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2zm3 9h3"/></svg> Pembayaran online melalui Midtrans</p>
     </div>
 </aside>
 

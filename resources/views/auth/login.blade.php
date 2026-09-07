@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Masuk — ALGO NATION')
+@section('title', 'Masuk - ALGO NATION')
 
 @section('content')
     <div class="mx-auto grid min-h-[80vh] max-w-7xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:px-8">
@@ -80,7 +80,7 @@
                             </div>
                             <div class="flex items-center gap-3 rounded-xl bg-white/60 p-3 dark:bg-white/5">
                                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-ink">✓</span>
-                                <span class="text-sm font-medium">Bayar di tempat (COD)</span>
+                                <span class="text-sm font-medium">Pembayaran online (transfer, QRIS, e-wallet)</span>
                             </div>
                         </div>
                     </div>

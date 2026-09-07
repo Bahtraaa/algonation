@@ -96,6 +96,28 @@
                     </div>
                 </div>
 
+                <div>
+                    <p class="label">Berat & Dimensi <span class="text-slate-400">(dipakai untuk menghitung ongkir)</span></p>
+                    <div class="mt-1 grid gap-3 sm:grid-cols-4">
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">Berat (gram)</label>
+                            <input type="number" name="weight" value="{{ old('weight', 300) }}" min="0" step="1" class="input mt-1" placeholder="300" required>
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">Panjang (cm)</label>
+                            <input type="number" name="length" value="{{ old('length', 40) }}" min="0" step="0.1" class="input mt-1" placeholder="40">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">Lebar (cm)</label>
+                            <input type="number" name="width" value="{{ old('width', 30) }}" min="0" step="0.1" class="input mt-1" placeholder="30">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">Tinggi (cm)</label>
+                            <input type="number" name="height" value="{{ old('height', 20) }}" min="0" step="0.1" class="input mt-1" placeholder="20">
+                        </div>
+                    </div>
+                </div>
+
                 <div class="flex justify-end gap-3 border-t border-slate-100 pt-5 dark:border-white/10">
                     <button type="button" @click="$store.ui.closeProductModal()" class="btn-outline">Batal</button>
                     <button type="submit" class="btn-primary">Simpan Produk</button>
@@ -129,12 +151,12 @@
                                 </div>
                             </div>
                         </td>
-                        <td><span class="badge {{ $product->category_class }}">{{ $product->category }}</span></td>
+                        <td><x-status-badge :variant="$product->category_class">{{ $product->category }}</x-status-badge></td>
                         <td>
                             @if ($product->variants->isNotEmpty())
                                 <span class="text-sm">{{ $product->variants->count() }} varian</span>
                             @else
-                                <span class="text-xs text-slate-400">—</span>
+                                <span class="text-xs text-slate-400">-</span>
                             @endif
                         </td>
                         <td>

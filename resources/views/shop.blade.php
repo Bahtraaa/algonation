@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Belanja — ALGO NATION')
+@section('title', 'Belanja - ALGO NATION')
 
 @section('content')
     <div class="min-h-screen bg-white dark:bg-[#1a120d]">
@@ -73,6 +73,9 @@
                         @if ($badge)
                             <span class="absolute left-3 top-3 bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-ink shadow-sm">{{ $badge }}</span>
                         @endif
+                        @if ($product->has_active_flash_sale)
+                            <span class="absolute right-3 top-3 bg-primary px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">FLASH SALE</span>
+                        @endif
                         <div class="absolute inset-x-3 bottom-3 flex translate-y-2 gap-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
                             <button @click="$store.cart.add({{ $product->id }}, null, 1)" @if ($product->is_out_of_stock) disabled @endif class="flex-1 bg-ink px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-white transition hover:bg-primary disabled:cursor-not-allowed disabled:opacity-60">
                                 {{ $product->is_out_of_stock ? 'Stok Habis' : 'Quick Add' }}
@@ -90,7 +93,7 @@
                             @endif
                         </div>
                         <a href="{{ route('products.show', $product) }}" class="mt-2 block truncate text-sm font-semibold hover:text-primary dark:hover:text-primary-soft">{{ $product->name }}</a>
-                        <p class="mt-1 text-sm font-bold text-ink dark:text-white">Rp {{ number_format($product->display_price, 0, ',', '.') }}</p>
+                        @include('partials.product-price', ['product' => $product, 'size' => 'sm'])
                     </div>
                 </article>
             @empty

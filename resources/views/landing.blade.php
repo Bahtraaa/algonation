@@ -61,7 +61,7 @@
                     dengan Fashion Pilihan
                 </h1>
                 <p class="mt-5 max-w-xl text-base text-slate-200 sm:text-lg">
-                    Temukan koleksi pakaian dan aksesori trendi — dari streetwear, denim, outerwear hingga sepatu dan tas. Kualitas premium, harga bersahabat, dan pembayaran COD.
+                    Temukan koleksi pakaian dan aksesori trendi, mulai dari streetwear, denim, outerwear hingga sepatu dan tas. Kualitas premium, harga bersahabat, dan pembayaran online.
                 </p>
                 <div class="mt-8 flex flex-wrap gap-3">
                     <a href="{{ route('shop') }}" class="btn-primary btn-lg shadow-xl shadow-primary/30">
@@ -80,8 +80,8 @@
                         <p class="text-xs text-slate-300">Original & Aman</p>
                     </div>
                     <div>
-                        <p class="font-display text-2xl font-extrabold text-white">COD</p>
-                        <p class="text-xs text-slate-300">Bayar di Tempat</p>
+                        <p class="font-display text-2xl font-extrabold text-white">Online</p>
+                        <p class="text-xs text-slate-300">Pembayaran Online</p>
                     </div>
                 </div>
             </div>
@@ -102,7 +102,7 @@
                             </div>
                             <div class="mt-5 grid grid-cols-2 gap-3">
 
-                                <div class="rounded-2xl bg-z-to-br from-primary/30 via-[#6b4423]/25 to-slate-950/70 p-3 border border-primary/30 backdrop-blur-md hover:border-primary transition-all duration-300 shadow-lg">
+                                <div class="rounded-2xl bg-gradient-to-br from-primary/30 via-[#6b4423]/25 to-slate-950/70 p-3 border border-primary/30 backdrop-blur-md hover:border-primary transition-all duration-300 shadow-lg">
                                     <div class="mb-2 h-24 overflow-hidden rounded-xl border border-primary/30">
                                         <img src="https://down-id.img.susercontent.com/file/id-11134207-8224o-mk7h4o8vqio783" alt="Streetwear Essentials" class="h-full w-full object-cover transition-transform duration-300 hover:scale-110">
                                     </div>
@@ -167,7 +167,6 @@
             @foreach ($categories as $category)
                 <a href="{{ route('shop', ['category' => $category]) }}"
                     class="card group p-6 text-center">
-                    {{-- GANTI LOGO KATEGORI: letakkan gambar pilihan di public/images/categories/ lalu ganti huruf kategori dengan tag img. --}}
                     <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-primary/30 to-[#6b4423]/30 text-2xl font-bold text-ink transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
                         {{ strtoupper(substr($category, 0, 1)) }}
                     </div>
@@ -177,6 +176,41 @@
             @endforeach
         </div>
     </section>
+
+    {{-- Database-backed flash sale --}}
+    @if ($flashSales->isNotEmpty())
+        <section class="relative overflow-hidden bg-ink py-14 text-white sm:py-20" x-data="flashSaleCountdown('{{ $flashSales->first()->end_at->toIso8601String() }}')" x-init="start()">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="flex flex-col justify-between gap-5 border-b border-white/15 pb-6 sm:flex-row sm:items-end">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-[0.3em] text-primary-soft">Limited time drop</p>
+                        <h2 class="mt-2 font-display text-4xl font-extrabold uppercase sm:text-6xl">Flash Sale</h2>
+                    </div>
+                    <p class="font-display text-xl font-bold text-primary-soft" x-text="label"></p>
+                </div>
+                <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                    @foreach ($flashSales as $sale)
+                        <article class="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                            <a href="{{ route('products.show', $sale->product) }}" class="block aspect-[4/5] overflow-hidden">
+                                <img src="{{ $sale->product->image_url }}" alt="{{ $sale->product->name }}" class="h-full w-full object-cover">
+                            </a>
+                            <div class="p-4">
+                                <h3 class="truncate font-bold">{{ $sale->product->name }}</h3>
+                                <p class="mt-2 text-sm text-white/45 line-through">Rp {{ number_format($sale->normal_price, 0, ',', '.') }}</p>
+                                <p class="font-display text-xl font-extrabold text-primary-soft">Rp {{ number_format($sale->sale_price, 0, ',', '.') }}</p>
+                                <div class="mt-3 flex items-center justify-between text-xs text-white/70">
+                                    <span>Diskon {{ rtrim(rtrim(number_format($sale->discount_percentage, 2, ',', '.'), '0'), ',') }}%</span>
+                                    <span>{{ $sale->stock }} tersisa</span>
+                                </div>
+                                <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/15"><div class="h-full bg-primary" style="width: {{ min(100, $sale->stock / max(1, $sale->stock + 10) * 100) }}%"></div></div>
+                                <button @click="$store.cart.add({{ $sale->product_id }}, null, 1, {{ $sale->id }})" class="btn-primary mt-4 w-full" {{ $sale->stock < 1 ? 'disabled' : '' }}>{{ $sale->stock < 1 ? 'Habis' : 'Beli Sekarang' }}</button>
+                            </div>
+                        </article>
+                    @endforeach
+                </div>
+            </div>
+        </section>
+    @endif
 
     {{-- Featured products --}}
     <section id="featured" class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
@@ -196,9 +230,9 @@
                             class="h-40 w-full object-cover transition-transform duration-500 group-hover:scale-110 sm:h-48">
                     </a>
                     <div class="p-4">
-                        <span class="badge {{ $product->category_class }}">{{ $product->category }}</span>
+                        <x-status-badge :variant="$product->category_class">{{ $product->category }}</x-status-badge>
                         <a href="{{ route('products.show', $product) }}" class="mt-2 block truncate text-sm font-bold hover:text-primary dark:hover:text-primary-soft">{{ $product->name }}</a>
-                        <p class="mt-1 text-sm font-semibold text-primary dark:text-primary-soft">Rp {{ number_format($product->display_price, 0, ',', '.') }}</p>
+                        @include('partials.product-price', ['product' => $product, 'size' => 'sm'])
                         <div class="mt-3">
                             <button @click="$store.cart.add({{ $product->id }}, null, 1)"
                                 @if ($product->is_out_of_stock) disabled @endif
@@ -228,7 +262,7 @@
                 <p class="text-xs font-bold uppercase tracking-[0.3em] text-[#d4a574]">08 / Fashion Inspiration</p>
                 <h2 class="mt-5 font-display text-6xl font-extrabold uppercase leading-[0.88] sm:text-8xl">Wear<br><span class="text-[#d4a574]">Your Way</span></h2>
                 <p class="mt-7 max-w-sm text-base leading-relaxed text-stone-300">Explore the latest looks from ALGO NATION.</p>
-                <a href="{{ route('featured') }}" class="btn-primary mt-8">View Lookbook <span aria-hidden="true">↗</span></a>
+                <a href="{{ route('featured') }}" class="btn-primary mt-8">View Lookbook <span aria-hidden="true">→</span></a>
             </div>
             <div class="grid grid-cols-3 gap-3">
                 <div class="mt-10 aspect-[3/4] overflow-hidden bg-stone-800">
@@ -252,7 +286,7 @@
                     <p class="text-xs font-bold uppercase tracking-[0.3em] text-primary dark:text-primary-soft">09 / The Algo Standard</p>
                     <h2 class="mt-4 font-display text-4xl font-extrabold uppercase leading-none sm:text-6xl">Shop with<br>confidence.</h2>
                 </div>
-                <a href="{{ route('about') }}" class="btn-dark">Our Story <span aria-hidden="true">↗</span></a>
+                <a href="{{ route('about') }}" class="btn-dark">Our Story <span aria-hidden="true">→</span></a>
             </div>
             <div class="grid gap-8 pt-8 sm:grid-cols-3">
                 <div>
@@ -267,8 +301,8 @@
                 </div>
                 <div>
                     <p class="font-display text-3xl font-extrabold text-primary">03</p>
-                    <h3 class="mt-4 font-display text-lg font-bold uppercase">Cash on Delivery</h3>
-                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">Belanja lebih tenang. Bayar saat pesanan sampai di tanganmu.</p>
+                    <h3 class="mt-4 font-display text-lg font-bold uppercase">Pembayaran Online</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">Bayar mudah & aman lewat transfer bank, e-wallet, QRIS, atau kartu kredit.</p>
                 </div>
             </div>
         </div>
@@ -295,8 +329,8 @@
                 <span class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-ink">
                     <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2m5-4h6m-3-3v6m-9-7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H8a2 2 0 01-2-2V7z"/></svg>
                 </span>
-                <h3 class="font-semibold">Pembayaran COD</h3>
-                <p class="mt-1 text-sm text-slate-500">Bayar setelah barang sampai di tangan Anda.</p>
+                <h3 class="font-semibold">Pembayaran Online</h3>
+                <p class="mt-1 text-sm text-slate-500">Bayar mudah lewat transfer bank, e-wallet, QRIS, atau kartu kredit.</p>
             </div>
         </div>
     </section>

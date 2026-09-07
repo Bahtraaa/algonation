@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->decimal('total_price', 12, 2)->default(0);
             $table->decimal('shipping_cost', 12, 2)->default(0);
-            $table->string('payment_method')->default('COD');
+            $table->string('payment_method')->default('midtrans');
             $table->text('shipping_address');
             $table->string('status')->default('pending');
             $table->timestamps();

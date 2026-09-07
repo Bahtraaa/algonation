@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Edit Produk — ' . $product->name)
+@section('title', 'Edit Produk - ' . $product->name)
 @section('page-title', 'Edit Produk')
 
 @section('content')
@@ -64,6 +64,28 @@
                     </div>
                 </div>
 
+                <div>
+                    <p class="label">Berat & Dimensi <span class="text-slate-400">(dipakai untuk menghitung ongkir)</span></p>
+                    <div class="mt-1 grid gap-3 sm:grid-cols-4">
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">Berat (gram)</label>
+                            <input type="number" name="weight" value="{{ old('weight', $product->weight ?? 300) }}" min="0" step="1" class="input mt-1" required>
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">Panjang (cm)</label>
+                            <input type="number" name="length" value="{{ old('length', $product->length ?? 40) }}" min="0" step="0.1" class="input mt-1">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">Lebar (cm)</label>
+                            <input type="number" name="width" value="{{ old('width', $product->width ?? 30) }}" min="0" step="0.1" class="input mt-1">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500">Tinggi (cm)</label>
+                            <input type="number" name="height" value="{{ old('height', $product->height ?? 20) }}" min="0" step="0.1" class="input mt-1">
+                        </div>
+                    </div>
+                </div>
+
                 <div class="flex justify-end gap-3 border-t border-slate-100 pt-5 dark:border-white/10">
                     <a href="{{ route('admin.products.index') }}" class="btn-outline">Batal</a>
                     <button type="submit" class="btn-primary">Simpan Perubahan</button>
@@ -73,7 +95,7 @@
 
         {{-- Add stock --}}
         <div class="card-flat mt-6 animate-fade-up p-6">
-            <h2 class="font-display font-bold">➕ Tambah Stok</h2>
+            <h2 class="font-display font-bold">Tambah Stok</h2>
             <form method="POST" action="{{ route('admin.products.stock', $product) }}" class="mt-4 flex items-end gap-3">
                 @csrf
                 <div class="flex-1">
@@ -86,7 +108,7 @@
 
         {{-- Variants --}}
         <div class="card-flat mt-6 animate-fade-up p-6">
-            <h2 class="font-display font-bold">🔀 Varian Produk</h2>
+            <h2 class="font-display font-bold">Varian Produk</h2>
             <p class="mt-1 text-xs text-slate-500">Kelola varian seperti ukuran, warna, atau bahan.</p>
 
             {{-- Variant list --}}

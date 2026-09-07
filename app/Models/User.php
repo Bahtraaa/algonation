@@ -68,6 +68,17 @@ class User extends Authenticatable
     }
 
     /**
+     * Determine whether the user is the last remaining active admin.
+     *
+     * Used to protect the platform from being left without any administrator.
+     */
+    public function isLastActiveAdmin(): bool
+    {
+        return $this->isAdmin()
+            && self::where('role', 'admin')->where('status', 'active')->count() <= 1;
+    }
+
+    /**
      * Get the transactions for the user.
      */
     public function transactions(): HasMany

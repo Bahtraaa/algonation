@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Transaction;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -16,22 +17,17 @@ class ProfileController extends Controller
      */
     public function show(): View
     {
-        $user = auth()->user();
+        $user = $this->authenticatedUser();
 
-        $allTransactions = $user->transactions()->with('details.product');
+        $transactionQuery = $user->transactions()->with('details.product');
 
-        $validTransactions = (clone $allTransactions)
-            ->whereNotIn('status', ['cancelled']);
+        $totalOrders   = (clone $transactionQuery)->whereNotIn('status', ['cancelled'])->count();
+        $totalSpent    = (clone $transactionQuery)->where('payment_status', 'paid')->sum('total_price');
+        $pendingOrders = (clone $transactionQuery)->where('payment_status', 'pending')->count();
 
-        $stats = [
-            'orders'      => $validTransactions->count(),
-            'total_spent' => $validTransactions->sum('total_price'),
-            'pending'     => $validTransactions->where('status', 'pending')->count(),
-        ];
+        $recentOrders = (clone $transactionQuery)->latest()->take(5)->get();
 
-        $recentOrders = $allTransactions->latest()->take(5)->get();
-
-        return view('profile.show', compact('user', 'stats', 'recentOrders'));
+        return view('profile.show', compact('user', 'totalOrders', 'totalSpent', 'pendingOrders', 'recentOrders'));
     }
 
     /**
@@ -39,7 +35,7 @@ class ProfileController extends Controller
      */
     public function update(Request $request): RedirectResponse
     {
-        $user = auth()->user();
+        $user = $this->authenticatedUser();
 
         $data = $request->validate([
             'name'     => ['required', 'string', 'max:255'],
@@ -57,22 +53,35 @@ class ProfileController extends Controller
      */
     public function updatePassword(Request $request): RedirectResponse
     {
+        $user = $this->authenticatedUser();
+
         $data = $request->validate([
             'current_password' => ['required', 'string'],
             'password'         => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        if (! Hash::check($data['current_password'], auth()->user()->password)) {
+        if (! Hash::check($data['current_password'], $user->password)) {
             return back()->withErrors([
                 'current_password' => 'Password saat ini salah.',
             ]);
         }
 
-        auth()->user()->update([
+        $user->update([
             'password' => Hash::make($data['password']),
         ]);
 
         return back()->with('success', 'Password berhasil diperbarui.');
+    }
+
+    private function authenticatedUser(): User
+    {
+        $user = Auth::user();
+
+        if (! $user instanceof User) {
+            abort(403);
+        }
+
+        return $user;
     }
 }
 
