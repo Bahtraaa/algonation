@@ -185,6 +185,8 @@ ALGO-NATION/
 │   │   ├── TransactionDetail.php
 │   │   └── User.php
 │   ├── Notifications/
+│   │   ├── Channels/
+│   │   │   └── MailtrapApiChannel.php
 │   │   └── ResetPasswordNotification.php
 │   ├── Providers/
 │   │   └── AppServiceProvider.php
@@ -407,6 +409,30 @@ SESSION_LIFETIME=120
 SESSION_ENCRYPT=false
 SESSION_PATH=/
 SESSION_DOMAIN=
+```
+
+### Email Reset Password
+
+Reset password dikirim melalui Mailtrap Send API menggunakan channel aplikasi
+`App\Notifications\Channels\MailtrapApiChannel`. Gunakan kredensial Mailtrap
+melalui environment variable dan jangan commit nilai aslinya ke repository.
+
+```env
+MAIL_MAILER=mailtrap-sdk
+MAILTRAP_HOST=send.api.mailtrap.io
+MAILTRAP_API_KEY=your-mailtrap-api-token
+MAIL_FROM_ADDRESS=sender@domain-terverifikasi.example
+MAIL_FROM_NAME="ALGO NATION"
+```
+
+Mailtrap demo domain hanya dapat mengirim email ke alamat pemilik akun Mailtrap.
+Untuk mengirim ke alamat pengguna lain, verifikasi domain pengirim di Mailtrap
+dan gunakan alamat dari domain tersebut pada `MAIL_FROM_ADDRESS`.
+
+Setelah mengubah `.env`, bersihkan konfigurasi:
+
+```bash
+php artisan config:clear
 ```
 
 ### Midtrans (Payment Gateway)
@@ -1597,11 +1623,16 @@ tests/
 │   ├── CheckoutControllerTest.php
 │   ├── ExampleTest.php
 │   └── ForgotPasswordTest.php
+├── Unit/
+│   └── .gitkeep
 ├── Pest.php
 └── TestCase.php
 ```
 
 Testing menggunakan SQLite in-memory database.
+
+Test fitur reset password mencakup pembuatan token, pengiriman notification,
+rate limiting, validasi link, kedaluwarsa token, dan penggunaan token sekali.
 
 ---
 
@@ -1623,6 +1654,13 @@ Periksa: `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` di `.
 ### Payment Gateway Gagal
 
 Periksa: `MIDTRANS_SERVER_KEY`, `MIDTRANS_CLIENT_KEY`, `MIDTRANS_IS_PRODUCTION`.
+
+### Email Reset Password Tidak Terkirim
+
+Periksa `MAILTRAP_API_KEY`, `MAILTRAP_HOST`, dan `MAIL_FROM_ADDRESS`. Jika muncul
+pesan `Demo domains can only be used to send emails to account owners`, gunakan
+alamat pemilik akun Mailtrap untuk testing atau verifikasi domain pengirim.
+Pastikan juga konfigurasi sudah dibersihkan dengan `php artisan config:clear`.
 
 ### Gambar Produk Tidak Muncul
 
