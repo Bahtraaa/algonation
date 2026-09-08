@@ -54,8 +54,8 @@
             <form method="POST" action="{{ route('admin.shipping.zones.store') }}" class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
                 @csrf
                 <input type="text" name="name" placeholder="Nama zona (contoh: Zona 1)" required class="input lg:col-span-2">
-                <input type="number" name="min_distance_km" min="0" value="0" placeholder="Min jarak (km)" required class="input">
-                <input type="number" name="max_distance_km" min="1" placeholder="Max jarak (km)" class="input">
+                <input type="number" name="min_distance_km" min="0" step="0.1" value="0" placeholder="Min jarak (km)" required class="input">
+                <input type="number" name="max_distance_km" min="0.1" step="0.1" placeholder="Max jarak (km)" class="input">
                 <input type="number" name="rate_per_kg" min="0" step="0.01" value="10000" placeholder="Tarif / kg" required class="input">
                 <button class="btn-primary">Tambah Zona</button>
                 <input type="number" name="min_charge" min="0" step="0.01" value="0" placeholder="Min charge" class="input lg:col-span-2">
@@ -71,7 +71,7 @@
                         @forelse ($zones as $zone)
                             <tr>
                                 <td class="font-semibold">{{ $zone->name }}</td>
-                                <td>{{ $zone->min_distance_km }}–{{ $zone->max_distance_km ?? '∞' }} km</td>
+                                <td>{{ str_replace('.', ',', rtrim(rtrim($zone->min_distance_km, '0'), '.')) }}–{{ $zone->max_distance_km !== null ? str_replace('.', ',', rtrim(rtrim($zone->max_distance_km, '0'), '.')) : '∞' }} km</td>
                                 <td>Rp {{ number_format($zone->rate_per_kg, 0, ',', '.') }}</td>
                                 <td>Rp {{ number_format($zone->min_charge, 0, ',', '.') }}</td>
                                 <td>{{ $zone->active ? 'Aktif' : 'Nonaktif' }}</td>
@@ -92,11 +92,11 @@
                                                         <div class="grid grid-cols-2 gap-3">
                                                             <div>
                                                                 <label class="mb-1 block text-xs font-semibold text-slate-500">Min Jarak (km)</label>
-                                                                <input type="number" name="min_distance_km" min="0" value="{{ $zone->min_distance_km }}" required class="input">
+                                                                <input type="number" name="min_distance_km" min="0" step="0.1" value="{{ $zone->min_distance_km }}" required class="input">
                                                             </div>
                                                             <div>
                                                                 <label class="mb-1 block text-xs font-semibold text-slate-500">Max Jarak (km)</label>
-                                                                <input type="number" name="max_distance_km" min="1" value="{{ $zone->max_distance_km }}" class="input" placeholder="∞">
+                                                                <input type="number" name="max_distance_km" min="0.1" step="0.1" value="{{ $zone->max_distance_km }}" class="input" placeholder="∞">
                                                             </div>
                                                         </div>
                                                         <div class="grid grid-cols-2 gap-3">

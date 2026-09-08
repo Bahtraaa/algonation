@@ -21,11 +21,11 @@ class ShippingZone extends Model
     protected function casts(): array
     {
         return [
-            'min_distance_km' => 'integer',
-            'max_distance_km' => 'integer',
-            'rate_per_kg'     => 'decimal:2',
-            'min_charge'      => 'decimal:2',
-            'active'          => 'boolean',
+            'min_distance_km' => 'decimal:2',
+            'max_distance_km' => 'decimal:2',
+            'rate_per_kg' => 'decimal:2',
+            'min_charge' => 'decimal:2',
+            'active' => 'boolean',
         ];
     }
 }

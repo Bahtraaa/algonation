@@ -170,20 +170,6 @@ class Transaction extends Model
     }
 
     /**
-     * Human friendly payment status badge classes.
-     */
-    public function getStatusClassAttribute(): string
-    {
-        return match ($this->status) {
-            'completed'      => 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
-            'processing'     => 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
-            'cancelled'      => 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300',
-            'pending_payment' => 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
-            default          => 'bg-[#e8dcc8] text-[#5c3d25] dark:bg-[#6b4423]/30 dark:text-[#d4a574]',
-        };
-    }
-
-    /**
      * Human friendly payment status label.
      */
     public function getPaymentStatusLabelAttribute(): string

@@ -73,7 +73,7 @@
                             <p class="flex justify-between gap-3"><span class="text-slate-500">Jenis Pengiriman</span><b x-text="$store.shipping.shipping_type_display" class="capitalize"></b></p>
                             <p class="flex justify-between gap-3"><span class="text-slate-500">Tujuan</span><b x-text="$store.shipping.destination_display"></b></p>
                             <p class="flex justify-between gap-3"><span class="text-slate-500">Layanan</span><b x-text="$store.shipping.result.shipping_courier || '-'"></b></p>
-                            <p class="flex justify-between gap-3"><span class="text-slate-500">Jarak</span><b x-text="$store.shipping.result.distance + ' km'"></b></p>
+                            <p class="flex justify-between gap-3"><span class="text-slate-500">Jarak</span><b x-text="$store.shipping.formatDistance($store.shipping.result.distance)"></b></p>
                             <p class="flex justify-between gap-3"><span class="text-slate-500">Berat Aktual</span><b x-text="$store.shipping.result.actual_weight + ' kg'"></b></p>
                             <p class="flex justify-between gap-3"><span class="text-slate-500">Berat Volumetrik</span><b x-text="$store.shipping.result.volumetric_weight + ' kg'"></b></p>
                             <p class="flex justify-between gap-3"><span class="text-slate-500">Berat yang Digunakan</span><b x-text="$store.shipping.result.billable_weight + ' kg'"></b></p>
@@ -183,6 +183,14 @@
                 if (!this.result.destination_city) return '-';
                 return this.result.destination_city + ', ' + this.result.destination_country;
             },
+            formatDistance(d) {
+                const n = Number(d);
+                if (d === null || d === undefined || isNaN(n)) return '-';
+                // Truncate (never round up) to one decimal so 100,1 km stays
+                // 100,1 and never shows as 100,2.
+                const truncated = Math.floor(n * 10) / 10;
+                return truncated.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' km';
+            },
         });
     });
 
@@ -213,11 +221,26 @@
                 return;
             }
 
-            // Snap popup callbacks drive UI redirection only; payment
-            // verification is handled server-side by the Midtrans webhook.
+            // Snap popup callbacks:
+            // - onSuccess  -> actively verify + finalize the payment server-side
+            //   (the webhook is often delayed/unreachable in local development),
+            //   then go to the receipt which already shows "Pembayaran Berhasil".
+            // - onPending / onClose (user clicks X or cancels) -> the order stays
+            //   "Menunggu Proses Pembayaran" until the gateway confirms it.
             snap.pay(data.snap_token, {
                 onSuccess: function(result) {
-                    window.location.href = data.redirect_url;
+                    fetch(data.finalize_url, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(result),
+                    })
+                    .then(r => r.json())
+                    .then(() => { window.location.href = data.redirect_url; })
+                    .catch(() => { window.location.href = data.redirect_url; });
                 },
                 onPending: function(result) {
                     window.location.href = data.redirect_url;

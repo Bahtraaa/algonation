@@ -2,18 +2,20 @@
 
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\FeaturedProductController;
+use App\Http\Controllers\Admin\FlashSaleController;
+use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\SalesController;
 use App\Http\Controllers\Admin\ShippingController;
 use App\Http\Controllers\Admin\StockController;
 use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\FlashSaleController;
-use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ResetPasswordController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -46,12 +48,20 @@ Route::middleware('guest')->group(function () {
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.store');
 
+    Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])
+        ->name('password.request');
+    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])
+        ->name('password.email');
+
+    Route::get('/reset-password/{token}', [ResetPasswordController::class, 'showResetForm'])
+        ->name('password.reset');
+    Route::post('/reset-password', [ResetPasswordController::class, 'reset'])
+        ->name('password.update');
 });
 
 Route::post('/logout', [AuthController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
-
 
 /*
 |--------------------------------------------------------------------------
@@ -73,6 +83,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/receipt/{transaction}', [CheckoutController::class, 'receipt'])->name('checkout.receipt');
     Route::post('/orders/{transaction}/pay', [CheckoutController::class, 'pay'])->name('orders.pay');
     Route::post('/orders/{transaction}/check-status', [CheckoutController::class, 'checkStatus'])->name('orders.check-status');
+    Route::post('/orders/{transaction}/finalize', [CheckoutController::class, 'finalize'])->name('orders.finalize');
     Route::delete('/orders/{transaction}/cancel', [CheckoutController::class, 'cancel'])->name('orders.cancel');
 });
 
@@ -106,7 +117,6 @@ Route::post('/cart/clear', [CartController::class, 'clear'])->name('cart.clear')
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
-    Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard.index');
 
     // Product management
     Route::resource('products', AdminProductController::class)->except(['show', 'create']);
@@ -146,7 +156,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     // Featured products (Produk Unggulan) — references existing products only.
     Route::get('featured-products', [FeaturedProductController::class, 'index'])->name('featured-products.index');
     Route::post('featured-products', [FeaturedProductController::class, 'store'])->name('featured-products.store');
-    Route::put('featured-products/{featuredProduct}', [FeaturedProductController::class, 'update'])->name('featured-products.update');
     Route::delete('featured-products/{featuredProduct}', [FeaturedProductController::class, 'destroy'])->name('featured-products.destroy');
 
     // Shipping configuration (origin, zones, international regions, couriers).
@@ -164,4 +173,3 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('shipping/couriers', [ShippingController::class, 'storeCourier'])->name('shipping.couriers.store');
     Route::delete('shipping/couriers/{courier}', [ShippingController::class, 'destroyCourier'])->name('shipping.couriers.destroy');
 });
-

@@ -11,8 +11,6 @@ return new class extends Migration
         Schema::create('featured_products', function (Blueprint $table) {
             $table->id();
             $table->foreignId('product_id')->unique()->constrained()->cascadeOnDelete();
-            $table->boolean('is_featured')->default(true);
-            $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
         });
     }

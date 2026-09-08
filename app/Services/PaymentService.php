@@ -8,6 +8,8 @@ use App\Models\ProductVariant;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Midtrans\Config;
+use Midtrans\Snap;
 
 /**
  * Payment gateway (Midtrans) domain logic.
@@ -27,17 +29,17 @@ class PaymentService
     public function buildItemDetails(Transaction $transaction): array
     {
         $items = $transaction->details->map(fn ($detail) => [
-            'id'       => (string) $detail->product_id,
-            'name'     => $detail->product?->name ?? 'Produk',
-            'price'    => (int) round($detail->quantity > 0 ? $detail->subtotal / $detail->quantity : 0),
+            'id' => (string) $detail->product_id,
+            'name' => $detail->product?->name ?? 'Produk',
+            'price' => (int) round($detail->quantity > 0 ? $detail->subtotal / $detail->quantity : 0),
             'quantity' => (int) $detail->quantity,
         ])->all();
 
         if ($transaction->shipping_cost > 0) {
             $items[] = [
-                'id'       => 'SHIPPING',
-                'name'     => 'Ongkos Kirim',
-                'price'    => (int) $transaction->shipping_cost,
+                'id' => 'SHIPPING',
+                'name' => 'Ongkos Kirim',
+                'price' => (int) $transaction->shipping_cost,
                 'quantity' => 1,
             ];
         }
@@ -55,7 +57,7 @@ class PaymentService
     {
         $params = [
             'transaction_details' => [
-                'order_id'     => $orderId,
+                'order_id' => $orderId,
                 'gross_amount' => $grossAmount,
             ],
             'item_details' => $itemDetails,
@@ -72,19 +74,19 @@ class PaymentService
      * Ask Midtrans to mint a fresh snap token for the given parameters.
      *
      * @param  array<string, mixed>  $params
-     * @return string|null  The snap token, or null when the request failed.
+     * @return string|null The snap token, or null when the request failed.
      */
     public function generateSnapToken(array $params): ?string
     {
         $this->bootstrapConfig();
 
         try {
-            return \Midtrans\Snap::getSnapToken($params);
+            return Snap::getSnapToken($params);
         } catch (\Throwable $e) {
             report($e);
             Log::error('Midtrans snap token creation failed', [
                 'order_id' => $params['transaction_details']['order_id'] ?? null,
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             return null;
@@ -110,7 +112,7 @@ class PaymentService
         } catch (\Throwable $e) {
             Log::error('[Midtrans Status Check] API call failed', [
                 'order_id' => $orderId,
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             return null;
@@ -122,10 +124,10 @@ class PaymentService
      */
     public function bootstrapConfig(): void
     {
-        \Midtrans\Config::$serverKey    = config('midtrans.serverKey');
-        \Midtrans\Config::$isProduction = config('midtrans.isProduction');
-        \Midtrans\Config::$isSanitized  = config('midtrans.isSanitized');
-        \Midtrans\Config::$is3ds        = config('midtrans.is3ds');
+        Config::$serverKey = config('midtrans.serverKey');
+        Config::$isProduction = config('midtrans.isProduction');
+        Config::$isSanitized = config('midtrans.isSanitized');
+        Config::$is3ds = config('midtrans.is3ds');
     }
 
     /**
@@ -134,14 +136,14 @@ class PaymentService
     public function mapPaymentStatus(?string $transactionStatus, ?string $fraudStatus, string $current): string
     {
         return match (true) {
-            $transactionStatus === 'settlement'                           => 'paid',
+            $transactionStatus === 'settlement' => 'paid',
             $transactionStatus === 'capture' && $fraudStatus === 'accept' => 'paid',
-            $transactionStatus === 'pending'                              => 'pending',
-            $transactionStatus === 'deny'                                 => 'failed',
-            $transactionStatus === 'cancel'                               => 'cancelled',
-            $transactionStatus === 'expire'                               => 'expired',
-            $transactionStatus === 'failure'                              => 'failed',
-            default                                                       => $current,
+            $transactionStatus === 'pending' => 'pending',
+            $transactionStatus === 'deny' => 'failed',
+            $transactionStatus === 'cancel' => 'cancelled',
+            $transactionStatus === 'expire' => 'expired',
+            $transactionStatus === 'failure' => 'failed',
+            default => $current,
         };
     }
 
@@ -151,41 +153,50 @@ class PaymentService
     public function mapOrderStatus(string $paymentStatus, string $current): string
     {
         return match ($paymentStatus) {
-            'paid'      => 'pending',
+            'paid' => 'pending',
             'failed',
             'expired',
             'cancelled' => 'cancelled',
-            default     => $current,
+            default => $current,
         };
     }
 
     /**
      * Apply a payment status transition inside a database transaction.
-     * Stock is decremented only on the first transition to paid (idempotent).
+     * Stock is restored/re-reserved only when the payment state actually changes.
      */
     public function applyPaymentStatus(Transaction $transaction, string $newPaymentStatus): void
     {
         $current = $transaction->payment_status ?? 'pending';
 
-        // A transaction that reached a terminal state (expired via the 15-minute
-        // deadline, failed, or cancelled) must never be moved away from it — not
-        // even backwards to pending or forwards to paid — regardless of any late
-        // or duplicate Midtrans notification.
-        if (in_array($current, ['expired', 'cancelled', 'failed'])
-            && in_array($newPaymentStatus, ['paid', 'pending', 'expired', 'cancelled', 'failed'])) {
+        // 'expired' is only OUR local 15-minute heuristic; a payment the gateway
+        // later confirms (settlement/capture) must still be able to recover the
+        // order to 'paid'. 'cancelled' and 'failed' are true terminal states and
+        // can never be moved away from.
+        if (in_array($current, ['cancelled', 'failed']) && $newPaymentStatus !== $current) {
             return;
         }
 
         $wasNotPaid = $current !== 'paid';
+        $recoveringFromExpiry = $current === 'expired' && $newPaymentStatus === 'paid';
 
-        DB::transaction(function () use ($transaction, $newPaymentStatus, $wasNotPaid) {
+        DB::transaction(function () use ($transaction, $newPaymentStatus, $wasNotPaid, $recoveringFromExpiry) {
             $updateData = [
                 'payment_status' => $newPaymentStatus,
-                'status'         => $this->mapOrderStatus($newPaymentStatus, $transaction->status),
+                'status' => $this->mapOrderStatus($newPaymentStatus, $transaction->status),
             ];
 
             if ($newPaymentStatus === 'paid' && $wasNotPaid) {
                 $updateData['paid_at'] = now();
+            }
+
+            if ($recoveringFromExpiry) {
+                // The 15-minute deadline had released the flash-sale reservation
+                // and parked the order; a late but CONFIRMED payment must take the
+                // reservation back and reopen the order for processing.
+                $updateData['shipping_status'] = 'menunggu_diproses';
+                $updateData['shipping_updated_at'] = now();
+                $this->reserveFlashSaleStock($transaction);
             }
 
             $transaction->update($updateData);
@@ -223,6 +234,22 @@ class PaymentService
 
             if ($flashSale) {
                 $flashSale->increment('stock', $detail->quantity);
+            }
+        }
+    }
+
+    /**
+     * Re-reserve the flash-sale stock for every line item. Used when a
+     * confirmed payment recovers an order from its local deadline expiry
+     * (the expiry had released the reservation).
+     */
+    public function reserveFlashSaleStock(Transaction $transaction): void
+    {
+        foreach ($transaction->details as $detail) {
+            $flashSale = FlashSale::where('product_id', $detail->product_id)->first();
+
+            if ($flashSale) {
+                $flashSale->decrement('stock', $detail->quantity);
             }
         }
     }

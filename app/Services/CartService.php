@@ -2,8 +2,6 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Arr;
-
 /**
  * Cart domain logic: totals, shipping estimates and the payload shape
  * returned to every cart endpoint.

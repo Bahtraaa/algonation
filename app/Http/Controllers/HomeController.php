@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\FeaturedProduct;
-use App\Models\Product;
 use App\Models\FlashSale;
+use App\Models\Product;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 use Illuminate\Support\Collection;
+use Illuminate\View\View;
 
 class HomeController extends Controller
 {
@@ -19,7 +19,7 @@ class HomeController extends Controller
         FlashSale::syncAllStatuses();
 
         $categories = Product::CATEGORIES;
-        $featured   = $this->featuredProducts()->take(8);
+        $featured = $this->featuredProducts()->take(8);
         $flashSales = FlashSale::active()->with('product.activeFlashSale')->latest()->get();
 
         return view('landing', compact('categories', 'featured', 'flashSales'));
@@ -47,9 +47,9 @@ class HomeController extends Controller
             $query->where('category', $request->string('category'));
         }
 
-        $products   = $query->paginate(9)->withQueryString();
+        $products = $query->paginate(9)->withQueryString();
         $categories = Product::CATEGORIES;
-        $selected   = $request->string('category', 'all');
+        $selected = $request->string('category', 'all');
 
         return view('shop', compact('products', 'categories', 'selected'));
     }
@@ -102,15 +102,13 @@ class HomeController extends Controller
     }
 
     /**
-     * The active featured products (referencing existing products), sorted by
-     * admin-defined sort_order. Returns a Collection to keep sorting trivial.
+     * The featured products (referencing existing products), in insertion order.
+     * Returns a Collection to keep sorting trivial.
      */
     private function featuredProducts(): Collection
     {
         return FeaturedProduct::query()
             ->with(['product.variants', 'product.activeFlashSale'])
-            ->where('is_featured', true)
-            ->orderBy('sort_order')
             ->orderBy('id')
             ->get()
             ->pluck('product')

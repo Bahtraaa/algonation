@@ -27,8 +27,7 @@ class CheckoutController extends Controller
         private readonly OrderService $orderService,
         private readonly CartService $cartService,
         private readonly ShippingService $shippingService,
-    ) {
-    }
+    ) {}
 
     /**
      * Show the checkout page with the current cart.
@@ -41,7 +40,7 @@ class CheckoutController extends Controller
             return view('cart.empty');
         }
 
-        $subtotal      = $this->cartService->subtotal($cart);
+        $subtotal = $this->cartService->subtotal($cart);
         $shippingItems = $this->shippingItems($cart);
 
         // Destination is unknown until the user fills the address form, so
@@ -63,11 +62,11 @@ class CheckoutController extends Controller
 
         $data = $request->validate([
             'country' => ['required', 'string', 'max:120'],
-            'city'    => ['required', 'string', 'max:120'],
-            'state'   => ['nullable', 'string', 'max:120'],
+            'city' => ['required', 'string', 'max:120'],
+            'state' => ['nullable', 'string', 'max:120'],
         ]);
 
-        $items       = $this->shippingItems($cart);
+        $items = $this->shippingItems($cart);
         $destination = $this->destination($data);
 
         $estimate = $this->shippingService->calculateShipping($items, $destination);
@@ -83,21 +82,21 @@ class CheckoutController extends Controller
         }
 
         return response()->json([
-            'success'              => true,
-            'shipping_type'        => $estimate['shipping_type'],
-            'origin_country'       => $estimate['origin_country'],
-            'destination_country'  => $estimate['destination_country'],
-            'destination_city'     => $estimate['destination_city'],
-            'distance'             => $estimate['distance'],
-            'actual_weight'        => $estimate['actual_weight'],
-            'volumetric_weight'    => $estimate['volumetric_weight'],
-            'billable_weight'      => $estimate['billable_weight'],
-            'shipping_zone'        => $estimate['shipping_zone'],
-            'region'               => $estimate['region'],
-            'shipping_cost'        => $estimate['shipping_cost'],
-            'shipping_courier'     => $estimate['shipping_courier'],
-            'subtotal'             => $this->cartService->subtotal($cart),
-            'total'                => $this->cartService->subtotal($cart) + $estimate['shipping_cost'],
+            'success' => true,
+            'shipping_type' => $estimate['shipping_type'],
+            'origin_country' => $estimate['origin_country'],
+            'destination_country' => $estimate['destination_country'],
+            'destination_city' => $estimate['destination_city'],
+            'distance' => $estimate['distance'],
+            'actual_weight' => $estimate['actual_weight'],
+            'volumetric_weight' => $estimate['volumetric_weight'],
+            'billable_weight' => $estimate['billable_weight'],
+            'shipping_zone' => $estimate['shipping_zone'],
+            'region' => $estimate['region'],
+            'shipping_cost' => $estimate['shipping_cost'],
+            'shipping_courier' => $estimate['shipping_courier'],
+            'subtotal' => $this->cartService->subtotal($cart),
+            'total' => $this->cartService->subtotal($cart) + $estimate['shipping_cost'],
         ]);
     }
 
@@ -126,17 +125,17 @@ class CheckoutController extends Controller
         }
 
         $data = $request->validate([
-            'full_name'   => ['required', 'string', 'max:255'],
-            'phone'       => ['required', 'string', 'max:20'],
-            'address'     => ['required', 'string', 'max:500'],
-            'country'     => ['required', 'string', 'max:120'],
-            'state'       => ['nullable', 'string', 'max:120'],
-            'city'        => ['required', 'string', 'max:120'],
+            'full_name' => ['required', 'string', 'max:255'],
+            'phone' => ['required', 'string', 'max:20'],
+            'address' => ['required', 'string', 'max:500'],
+            'country' => ['required', 'string', 'max:120'],
+            'state' => ['nullable', 'string', 'max:120'],
+            'city' => ['required', 'string', 'max:120'],
             'postal_code' => ['nullable', 'string', 'max:10'],
-            'notes'       => ['nullable', 'string', 'max:500'],
+            'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $items       = $this->shippingItems($cart);
+        $items = $this->shippingItems($cart);
         $destination = $this->destination($data);
 
         $shipping = $this->shippingService->calculateShipping($items, $destination);
@@ -160,35 +159,35 @@ class CheckoutController extends Controller
         foreach ($items as $item) {
             $subtotal += (float) $item['price'] * (int) $item['quantity'];
         }
-        $subtotal    = round($subtotal, 2);
+        $subtotal = round($subtotal, 2);
         $shippingCost = (float) $shipping['shipping_cost'];
         $grossAmount = (int) round($subtotal + $shippingCost);
 
-        $orderId = 'ORDER-' . $user->id . '-' . time();
+        $orderId = 'ORDER-'.$user->id.'-'.time();
 
         $itemDetails = [];
         foreach ($items as $item) {
             $itemDetails[] = [
-                'id'       => (string) $item['product_id'],
-                'name'     => $item['name'] . ($item['variant'] ? ' (' . $item['variant'] . ')' : ''),
-                'price'    => (int) round($item['price']),
+                'id' => (string) $item['product_id'],
+                'name' => $item['name'].($item['variant'] ? ' ('.$item['variant'].')' : ''),
+                'price' => (int) round($item['price']),
                 'quantity' => (int) $item['quantity'],
             ];
         }
         if ($shippingCost > 0) {
             $itemDetails[] = [
-                'id'       => 'SHIPPING',
-                'name'     => 'Ongkos Kirim',
-                'price'    => (int) round($shippingCost),
+                'id' => 'SHIPPING',
+                'name' => 'Ongkos Kirim',
+                'price' => (int) round($shippingCost),
                 'quantity' => 1,
             ];
         }
 
         $params = $this->paymentService->buildSnapParams($orderId, $grossAmount, $itemDetails, [
             'first_name' => $data['full_name'],
-            'phone'      => $data['phone'],
-            'email'      => $user->email,
-            'address'    => $data['address'] . ', ' . $data['city'] . ' ' . ($data['postal_code'] ?? ''),
+            'phone' => $data['phone'],
+            'email' => $user->email,
+            'address' => $data['address'].', '.$data['city'].' '.($data['postal_code'] ?? ''),
         ]);
 
         $snapToken = $this->paymentService->generateSnapToken($params);
@@ -198,7 +197,7 @@ class CheckoutController extends Controller
         }
 
         $transaction = DB::transaction(function () use (
-            $request,
+
             $items,
             $data,
             $subtotal,
@@ -209,36 +208,36 @@ class CheckoutController extends Controller
             $snapToken
         ) {
             $transaction = Transaction::create([
-                'user_id'                  => $user->id,
-                'total_price'              => $subtotal,
-                'shipping_cost'            => $shippingCost,
-                'payment_method'           => 'midtrans',
-                'shipping_address'         => trim(
-                    $data['full_name'] . "\n" .
-                    $data['phone'] . "\n" .
-                    $data['address'] . ', ' . ($data['state'] ? $data['state'].', ' : '') . $data['city'] . ' ' . ($data['postal_code'] ?? '') . "\n" .
-                    $data['country'] . "\n" .
+                'user_id' => $user->id,
+                'total_price' => $subtotal,
+                'shipping_cost' => $shippingCost,
+                'payment_method' => 'midtrans',
+                'shipping_address' => trim(
+                    $data['full_name']."\n".
+                    $data['phone']."\n".
+                    $data['address'].', '.($data['state'] ? $data['state'].', ' : '').$data['city'].' '.($data['postal_code'] ?? '')."\n".
+                    $data['country']."\n".
                     ($data['notes'] ?? '')
                 ),
-                'status'                   => 'pending_payment',
-                'payment_status'           => 'pending',
-                'payment_due_at'           => now()->addMinutes(Transaction::PAYMENT_DURATION_MINUTES),
-                'shipping_status'          => 'menunggu_diproses',
-                'midtrans_order_id'        => $orderId,
-                'midtrans_snap_token'      => $snapToken,
+                'status' => 'pending_payment',
+                'payment_status' => 'pending',
+                'payment_due_at' => now()->addMinutes(Transaction::PAYMENT_DURATION_MINUTES),
+                'shipping_status' => 'menunggu_diproses',
+                'midtrans_order_id' => $orderId,
+                'midtrans_snap_token' => $snapToken,
                 // Shipping snapshot (immutable after this order is recorded).
-                'shipping_type'            => $shipping['shipping_type'],
-                'origin_country'           => $shipping['origin_country'],
-                'destination_country'      => $shipping['destination_country'],
-                'destination_city'         => $shipping['destination_city'],
-                'destination_state'        => $shipping['destination_state'],
-                'destination_postal_code'  => $shipping['destination_postal_code'],
-                'shipping_distance'        => $shipping['distance'],
-                'actual_weight'            => $shipping['actual_weight'],
-                'volumetric_weight'        => $shipping['volumetric_weight'],
-                'billable_weight'          => $shipping['billable_weight'],
-                'shipping_zone'            => $shipping['shipping_zone'],
-                'shipping_courier'         => $shipping['shipping_courier'],
+                'shipping_type' => $shipping['shipping_type'],
+                'origin_country' => $shipping['origin_country'],
+                'destination_country' => $shipping['destination_country'],
+                'destination_city' => $shipping['destination_city'],
+                'destination_state' => $shipping['destination_state'],
+                'destination_postal_code' => $shipping['destination_postal_code'],
+                'shipping_distance' => $shipping['distance'],
+                'actual_weight' => $shipping['actual_weight'],
+                'volumetric_weight' => $shipping['volumetric_weight'],
+                'billable_weight' => $shipping['billable_weight'],
+                'shipping_zone' => $shipping['shipping_zone'],
+                'shipping_courier' => $shipping['shipping_courier'],
             ]);
 
             foreach ($items as $item) {
@@ -258,10 +257,10 @@ class CheckoutController extends Controller
 
                 TransactionDetail::create([
                     'transaction_id' => $transaction->id,
-                    'product_id'     => $item['product_id'],
-                    'variant_id'     => $item['variant_id'] ?? null,
-                    'quantity'       => $item['quantity'],
-                    'subtotal'       => (float) $item['price'] * (int) $item['quantity'],
+                    'product_id' => $item['product_id'],
+                    'variant_id' => $item['variant_id'] ?? null,
+                    'quantity' => $item['quantity'],
+                    'subtotal' => (float) $item['price'] * (int) $item['quantity'],
                 ]);
             }
 
@@ -269,18 +268,19 @@ class CheckoutController extends Controller
         });
 
         Log::info('Midtrans order created', [
-            'transaction_id'    => $transaction->id,
+            'transaction_id' => $transaction->id,
             'midtrans_order_id' => $orderId,
-            'user_id'           => $user->id,
-            'gross_amount'      => $grossAmount,
-            'shipping_cost'     => $shippingCost,
+            'user_id' => $user->id,
+            'gross_amount' => $grossAmount,
+            'shipping_cost' => $shippingCost,
         ]);
 
         $request->session()->forget('cart');
 
         return response()->json([
-            'snap_token'   => $snapToken,
+            'snap_token' => $snapToken,
             'redirect_url' => route('checkout.receipt', $transaction->id),
+            'finalize_url' => route('orders.finalize', $transaction->id),
         ]);
     }
 
@@ -311,24 +311,24 @@ class CheckoutController extends Controller
             }
 
             $variantId = $item['variant_id'] ?? null;
-            $variant   = $variantId ? $product->variants->firstWhere('id', $variantId) : null;
+            $variant = $variantId ? $product->variants->firstWhere('id', $variantId) : null;
 
             // Server-authoritative pricing: active flash sale wins.
             $flashSale = $product->activeFlashSale;
-            $price     = (float) ($flashSale?->sale_price ?? $variant?->price ?? $product->price);
+            $price = (float) ($flashSale?->sale_price ?? $variant?->price ?? $product->price);
 
             $items[] = [
-                'product_id'  => $product->id,
-                'variant_id'  => $variantId,
-                'name'        => $product->name,
-                'variant'     => $variant?->name,
-                'quantity'    => (int) ($item['quantity'] ?? 1),
-                'price'       => $price,
-                'image_url'   => $product->image_url,
-                'flash_sale'  => $flashSale,
-                'flash_sale_id'=> $flashSale?->id,
-                'weight_kg'   => $product->weight_kg,
-                'dimensions'  => $product->dimensions,
+                'product_id' => $product->id,
+                'variant_id' => $variantId,
+                'name' => $product->name,
+                'variant' => $variant?->name,
+                'quantity' => (int) ($item['quantity'] ?? 1),
+                'price' => $price,
+                'image_url' => $product->image_url,
+                'flash_sale' => $flashSale,
+                'flash_sale_id' => $flashSale?->id,
+                'weight_kg' => $product->weight_kg,
+                'dimensions' => $product->dimensions,
             ];
         }
 
@@ -344,23 +344,23 @@ class CheckoutController extends Controller
      */
     private function destination(array $data): array
     {
-        $city   = (string) ($data['city'] ?? '');
-        $state  = (string) ($data['state'] ?? '');
+        $city = (string) ($data['city'] ?? '');
+        $state = (string) ($data['state'] ?? '');
         $country = (string) ($data['country'] ?? 'Indonesia');
 
         $destination = [
-            'country'     => $country,
-            'state'       => $state,
-            'city'        => $city,
+            'country' => $country,
+            'state' => $state,
+            'city' => $city,
             'postal_code' => $data['postal_code'] ?? null,
-            'latitude'    => null,
-            'longitude'   => null,
+            'latitude' => null,
+            'longitude' => null,
         ];
 
         $coordinates = $this->shippingService->geocode(trim($city.' '.$state.', '.$country));
 
         if ($coordinates) {
-            $destination['latitude']  = $coordinates['latitude'];
+            $destination['latitude'] = $coordinates['latitude'];
             $destination['longitude'] = $coordinates['longitude'];
         }
 
@@ -383,18 +383,20 @@ class CheckoutController extends Controller
 
             if (empty($body)) {
                 Log::error('[Midtrans Webhook] Empty or invalid JSON body', ['raw' => $rawBody]);
+
                 return response('Invalid request body', 400);
             }
 
-            $orderId           = $body['order_id'] ?? null;
-            $statusCode        = $body['status_code'] ?? null;
-            $grossAmount       = $body['gross_amount'] ?? null;
-            $signatureKey      = $body['signature_key'] ?? null;
+            $orderId = $body['order_id'] ?? null;
+            $statusCode = $body['status_code'] ?? null;
+            $grossAmount = $body['gross_amount'] ?? null;
+            $signatureKey = $body['signature_key'] ?? null;
             $transactionStatus = $body['transaction_status'] ?? null;
-            $fraudStatus       = $body['fraud_status'] ?? null;
+            $fraudStatus = $body['fraud_status'] ?? null;
 
             if (! $orderId || ! $transactionStatus) {
                 Log::error('[Midtrans Webhook] Missing required fields', compact('orderId', 'transactionStatus'));
+
                 return response('Missing required fields', 400);
             }
 
@@ -404,6 +406,7 @@ class CheckoutController extends Controller
 
             if ($signatureKey === null || ! hash_equals($expectedSignature, $signatureKey)) {
                 Log::warning('[Midtrans Webhook] Signature mismatch - rejected', ['order_id' => $orderId]);
+
                 return response('Invalid signature', 403);
             }
 
@@ -411,20 +414,19 @@ class CheckoutController extends Controller
 
             if (! $transaction) {
                 Log::error('[Midtrans Webhook] Order not found', ['midtrans_order_id' => $orderId]);
+
                 return response('Order not found', 404);
             }
 
-            // Enforce the 15-minute payment deadline server-side: if the order is
-            // still unpaid and the deadline passed, mark it expired before the
-            // notification is processed. An expired order is never flipped to paid.
-            $transaction->markExpiredIfPastDue();
-
-            // Verify against the Midtrans API (double-check) when available.
+            // Verify against the Midtrans API FIRST (double-check) so a confirmed
+            // settlement that arrived late can never be overwritten by the local
+            // 15-minute deadline. The deadline is only a fallback for orders that
+            // are genuinely still unpaid upstream.
             $apiStatus = $this->paymentService->checkStatus($orderId);
 
             if ($apiStatus !== null) {
                 $transactionStatus = $apiStatus['transaction_status'] ?? $transactionStatus;
-                $fraudStatus       = $apiStatus['fraud_status'] ?? $fraudStatus;
+                $fraudStatus = $apiStatus['fraud_status'] ?? $fraudStatus;
             }
 
             $newPaymentStatus = $this->paymentService->mapPaymentStatus(
@@ -433,27 +435,39 @@ class CheckoutController extends Controller
                 $transaction->payment_status ?? 'pending'
             );
 
+            // Nothing has been confirmed upstream (still pending): only then do we
+            // enforce the local payment deadline.
+            if ($newPaymentStatus === 'pending') {
+                $transaction->refresh();
+                $transaction->markExpiredIfPastDue();
+                $transaction->refresh();
+                $newPaymentStatus = $transaction->payment_status;
+            }
+
             // Skip a no-op update so repeated webhooks don't touch the database.
-            if ($newPaymentStatus === $transaction->payment_status) {
+            if ($newPaymentStatus === ($transaction->payment_status ?? 'pending')) {
                 return response('OK', 200);
             }
 
             $this->paymentService->applyPaymentStatus($transaction, $newPaymentStatus);
 
+            $transaction->refresh();
+
             Log::info('[Midtrans Webhook] Payment status updated', [
                 'transaction_id' => $transaction->id,
                 'payment_status' => $transaction->payment_status,
-                'status'         => $transaction->status,
-                'paid_at'        => $transaction->paid_at?->toISOString(),
+                'status' => $transaction->status,
+                'paid_at' => $transaction->paid_at?->toISOString(),
             ]);
 
             return response('OK', 200);
         } catch (\Throwable $e) {
             Log::error('[Midtrans Webhook] Unexpected error', [
                 'message' => $e->getMessage(),
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
+
             return response('Internal error', 500);
         }
     }
@@ -467,26 +481,28 @@ class CheckoutController extends Controller
     {
         $this->authorizeOwner($transaction);
 
-        // Server-side deadline check: expire unpaid orders past the 15 minutes.
-        $transaction->markExpiredIfPastDue();
-
-        // If already paid, just return current status
+        // If already paid, just return current status.
         if (($transaction->payment_status ?? 'pending') === 'paid') {
             return response()->json([
                 'payment_status' => $transaction->payment_status,
-                'paid_at'        => $transaction->paid_at?->toISOString(),
-                'source'         => 'database',
+                'paid_at' => $transaction->paid_at?->toISOString(),
+                'source' => 'database',
             ]);
         }
 
-        // Query Midtrans API for current status
+        // Query the Midtrans API FIRST so a confirmed payment always wins over
+        // the local 15-minute deadline (fixes "user paid but still shows unpaid").
         $apiStatus = $this->paymentService->checkStatus($transaction->midtrans_order_id);
 
         if ($apiStatus === null) {
+            // Midtrans unreachable: fall back to the server-side deadline only.
+            $transaction->refresh();
+            $transaction->markExpiredIfPastDue();
+
             return response()->json([
-                'payment_status' => $transaction->payment_status ?? 'pending',
-                'paid_at'        => $transaction->paid_at?->toISOString(),
-                'source'         => 'database',
+                'payment_status' => $transaction->payment_status,
+                'paid_at' => $transaction->paid_at?->toISOString(),
+                'source' => 'database',
             ]);
         }
 
@@ -496,21 +512,104 @@ class CheckoutController extends Controller
             $transaction->payment_status ?? 'pending'
         );
 
-        $this->paymentService->applyPaymentStatus($transaction, $newPaymentStatus);
+        // Still genuinely unpaid upstream: enforce the local deadline.
+        if ($newPaymentStatus === 'pending') {
+            $transaction->refresh();
+            $transaction->markExpiredIfPastDue();
+            $transaction->refresh();
 
-        $transaction->refresh();
+            return response()->json([
+                'payment_status' => $transaction->payment_status,
+                'paid_at' => $transaction->paid_at?->toISOString(),
+                'source' => 'database',
+            ]);
+        }
+
+        if ($newPaymentStatus !== ($transaction->payment_status ?? 'pending')) {
+            $this->paymentService->applyPaymentStatus($transaction, $newPaymentStatus);
+            $transaction->refresh();
+        }
 
         Log::info('[Midtrans Status Check] Synced via API', [
-            'transaction_id'    => $transaction->id,
+            'transaction_id' => $transaction->id,
             'midtrans_order_id' => $transaction->midtrans_order_id,
-            'payment_status'    => $transaction->payment_status,
-            'paid_at'           => $transaction->paid_at?->toISOString(),
+            'payment_status' => $transaction->payment_status,
+            'paid_at' => $transaction->paid_at?->toISOString(),
         ]);
 
         return response()->json([
             'payment_status' => $transaction->payment_status,
-            'paid_at'        => $transaction->paid_at?->toISOString(),
-            'source'         => 'midtrans_api',
+            'paid_at' => $transaction->paid_at?->toISOString(),
+            'source' => 'midtrans_api',
+        ]);
+    }
+
+    /**
+     * Finalize (verify + apply) a payment right after the Snap popup reports
+     * onSuccess. The Midtrans webhook can be delayed or unreachable (typical of
+     * local development), so the client-confirmed result is verified here with
+     * the same signature rules as the webhook before the order is marked paid.
+     */
+    public function finalize(Request $request, Transaction $transaction): JsonResponse
+    {
+        $this->authorizeOwner($transaction);
+
+        $orderId = $request->input('order_id');
+
+        if (! $orderId || $transaction->midtrans_order_id !== $orderId) {
+            return response()->json(['success' => false, 'message' => 'Order tidak cocok.'], 422);
+        }
+
+        $transactionStatus = $request->input('transaction_status');
+        $fraudStatus = $request->input('fraud_status');
+
+        // Verify the onSuccess result with the same signature rules as the
+        // webhook. The signature is produced by Midtrans with our server key, so
+        // a client cannot forge it — and this path needs no network round-trip,
+        // so it can never hang when the sandbox/local network is unreachable.
+        $statusCode = (string) $request->input('status_code');
+        $grossAmount = (string) $request->input('gross_amount');
+        $signatureKey = $request->input('signature_key');
+        $expectedSignature = hash('sha512', $orderId.$statusCode.$grossAmount.config('midtrans.serverKey'));
+        $signatureValid = $signatureKey !== null && hash_equals($expectedSignature, $signatureKey);
+
+        if (! $signatureValid) {
+            // Fall back to the authoritative status API (rare: legacy channels
+            // that omit the signature). Reject when the API is unreachable.
+            $apiStatus = $this->paymentService->checkStatus($orderId);
+
+            if ($apiStatus === null) {
+                Log::warning('[Midtrans Finalize] Signature mismatch and API unreachable - rejected', ['midtrans_order_id' => $orderId]);
+
+                return response()->json(['success' => false, 'message' => 'Verifikasi pembayaran gagal. Silakan tunggu konfirmasi.'], 422);
+            }
+
+            $transactionStatus = $apiStatus['transaction_status'] ?? $transactionStatus;
+            $fraudStatus = $apiStatus['fraud_status'] ?? $fraudStatus;
+        }
+
+        $newPaymentStatus = $this->paymentService->mapPaymentStatus(
+            $transactionStatus,
+            $fraudStatus,
+            $transaction->payment_status ?? 'pending'
+        );
+
+        if ($newPaymentStatus === 'paid' && ($transaction->payment_status ?? 'pending') !== 'paid') {
+            $this->paymentService->applyPaymentStatus($transaction, 'paid');
+            $transaction->refresh();
+        }
+
+        Log::info('[Midtrans Finalize] Payment finalized', [
+            'transaction_id' => $transaction->id,
+            'midtrans_order_id' => $orderId,
+            'payment_status' => $transaction->payment_status,
+            'paid_at' => $transaction->paid_at?->toISOString(),
+        ]);
+
+        return response()->json([
+            'success' => $transaction->payment_status === 'paid',
+            'payment_status' => $transaction->payment_status,
+            'paid_at' => $transaction->paid_at?->toISOString(),
         ]);
     }
 
@@ -583,9 +682,9 @@ class CheckoutController extends Controller
         if (! $transaction->isPayable() || $transaction->payment_method !== 'midtrans') {
             $message = match ($transaction->payment_status) {
                 'cancelled' => 'Pesanan ini sudah dibatalkan dan tidak dapat dibayar kembali.',
-                'expired'   => 'Pesanan dibatalkan karena pembayaran tidak diselesaikan dalam 15 menit.',
-                'paid'      => 'Pesanan ini sudah dibayar.',
-                default     => 'Pesanan ini tidak dapat dibayar.',
+                'expired' => 'Pesanan dibatalkan karena pembayaran tidak diselesaikan dalam 15 menit.',
+                'paid' => 'Pesanan ini sudah dibayar.',
+                default => 'Pesanan ini tidak dapat dibayar.',
             };
 
             return response()->json(['success' => false, 'message' => $message], 422);
@@ -608,8 +707,9 @@ class CheckoutController extends Controller
         $transaction->update(['midtrans_snap_token' => $snapToken]);
 
         return response()->json([
-            'snap_token'   => $snapToken,
+            'snap_token' => $snapToken,
             'redirect_url' => route('checkout.receipt', $transaction->id),
+            'finalize_url' => route('orders.finalize', $transaction->id),
         ]);
     }
 

@@ -167,6 +167,35 @@
     // Shared display-only payment deadline countdown; expiry is enforced in the
     // backend via payment_due_at.
     window.startPaymentCountdown();
+
+    // The Midtrans webhook can lag behind the browser; poll the server-side sync
+    // endpoint (which double-checks the Midtrans API) so a confirmed payment is
+    // reflected without a manual reload.
+    (function pollPaymentStatus(attempts) {
+        const dueText = document.querySelector('[data-payment-countdown]')?.dataset.dueAt;
+        const due = dueText ? new Date(dueText).getTime() : Date.now() + 1000;
+
+        if (attempts <= 0 || due <= Date.now()) {
+            return;
+        }
+
+        fetch('{{ route('orders.check-status', $transaction->id) }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+                'Accept': 'application/json',
+            },
+        })
+            .then(r => (r.ok ? r.json() : Promise.reject()))
+            .then(data => {
+                if (data && data.payment_status !== 'pending') {
+                    window.location.reload();
+                    return;
+                }
+                setTimeout(() => pollPaymentStatus(attempts - 1), 5000);
+            })
+            .catch(() => setTimeout(() => pollPaymentStatus(attempts - 1), 10000));
+    })(15);
 </script>
 @endif
 @endpush

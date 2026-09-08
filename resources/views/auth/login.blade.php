@@ -13,6 +13,18 @@
                     <p class="mt-2 text-sm text-slate-500">Masuk untuk melanjutkan belanja fashion yang membuatmu tampil percaya diri.</p>
                 </div>
 
+                @if (session('password_reset_success'))
+                    <div class="animate-fade-up mb-6 rounded-2xl border border-emerald-300 bg-emerald-50 p-5 text-center dark:border-emerald-400/30 dark:bg-emerald-900/20">
+                        <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+                            <svg class="h-6 w-6 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                            </svg>
+                        </div>
+                        <h2 class="font-display text-lg font-bold text-emerald-800 dark:text-emerald-300">Password Berhasil Diubah</h2>
+                        <p class="mt-1 text-sm text-emerald-700 dark:text-emerald-400">Password kamu telah berhasil diperbarui. Silakan login menggunakan password baru.</p>
+                    </div>
+                @endif
+
                 <div class="glass-strong rounded-2xl p-6 sm:p-8">
                     <form method="POST" action="{{ route('login.attempt') }}" class="space-y-5">
                         @csrf
@@ -47,6 +59,7 @@
                                 <input type="checkbox" name="remember" class="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary">
                                 Ingat saya
                             </label>
+                            <a href="{{ route('password.request') }}" class="text-sm font-semibold text-primary hover:underline dark:text-primary-soft">Lupa Password?</a>
                         </div>
 
                         <button type="submit" class="btn-primary w-full btn-lg">Masuk</button>

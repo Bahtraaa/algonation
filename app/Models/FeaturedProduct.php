@@ -12,16 +12,11 @@ class FeaturedProduct extends Model
 
     protected $fillable = [
         'product_id',
-        'is_featured',
-        'sort_order',
     ];
 
     protected function casts(): array
     {
-        return [
-            'is_featured' => 'boolean',
-            'sort_order'  => 'integer',
-        ];
+        return [];
     }
 
     public function product(): BelongsTo

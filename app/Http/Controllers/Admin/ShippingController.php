@@ -19,9 +19,9 @@ class ShippingController extends Controller
      */
     public function index(): View
     {
-        $settings = ShippingSetting::query()->latest('id')->first() ?? new ShippingSetting();
-        $zones    = ShippingZone::orderBy('min_distance_km')->get();
-        $regions  = InternationalRegion::with('countries')->orderBy('name')->get();
+        $settings = ShippingSetting::query()->latest('id')->first() ?? new ShippingSetting;
+        $zones = ShippingZone::orderBy('min_distance_km')->get();
+        $regions = InternationalRegion::with('countries')->orderBy('name')->get();
         $countries = ShippingCountry::with('region')->orderBy('country')->get();
         $couriers = ShippingCourier::orderBy('type')->orderBy('name')->get();
 
@@ -40,12 +40,12 @@ class ShippingController extends Controller
     public function updateSettings(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'origin_country'    => ['required', 'string', 'max:120'],
-            'origin_city'       => ['nullable', 'string', 'max:120'],
-            'origin_latitude'   => ['nullable', 'numeric', 'between:-90,90'],
-            'origin_longitude'  => ['nullable', 'numeric', 'between:-180,180'],
-            'routing_provider'  => ['nullable', 'string', 'in:none,osrm'],
-            'enable_routing'    => ['nullable', 'boolean'],
+            'origin_country' => ['required', 'string', 'max:120'],
+            'origin_city' => ['nullable', 'string', 'max:120'],
+            'origin_latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'origin_longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'routing_provider' => ['nullable', 'string', 'in:none,osrm'],
+            'enable_routing' => ['nullable', 'boolean'],
         ]);
 
         $settings = ShippingSetting::query()->latest('id')->first();
@@ -65,13 +65,15 @@ class ShippingController extends Controller
 
     public function storeZone(Request $request): RedirectResponse
     {
+        $request->merge($this->normalizeZoneDistances($request));
+
         $data = $request->validate([
-            'name'           => ['required', 'string', 'max:120'],
-            'min_distance_km'=> ['required', 'integer', 'min:0'],
-            'max_distance_km'=> ['nullable', 'integer', 'gt:min_distance_km'],
-            'rate_per_kg'    => ['required', 'numeric', 'min:0'],
-            'min_charge'     => ['nullable', 'numeric', 'min:0'],
-            'active'         => ['nullable', 'boolean'],
+            'name' => ['required', 'string', 'max:120'],
+            'min_distance_km' => ['required', 'numeric', 'min:0'],
+            'max_distance_km' => ['nullable', 'numeric', 'gt:min_distance_km'],
+            'rate_per_kg' => ['required', 'numeric', 'min:0'],
+            'min_charge' => ['nullable', 'numeric', 'min:0'],
+            'active' => ['nullable', 'boolean'],
         ]);
 
         $data['active'] = $request->boolean('active');
@@ -82,19 +84,51 @@ class ShippingController extends Controller
 
     public function updateZone(Request $request, ShippingZone $zone): RedirectResponse
     {
+        $request->merge($this->normalizeZoneDistances($request));
+
         $data = $request->validate([
-            'name'           => ['required', 'string', 'max:120'],
-            'min_distance_km'=> ['required', 'integer', 'min:0'],
-            'max_distance_km'=> ['nullable', 'integer', 'gt:min_distance_km'],
-            'rate_per_kg'    => ['required', 'numeric', 'min:0'],
-            'min_charge'     => ['nullable', 'numeric', 'min:0'],
-            'active'         => ['nullable', 'boolean'],
+            'name' => ['required', 'string', 'max:120'],
+            'min_distance_km' => ['required', 'numeric', 'min:0'],
+            'max_distance_km' => ['nullable', 'numeric', 'gt:min_distance_km'],
+            'rate_per_kg' => ['required', 'numeric', 'min:0'],
+            'min_charge' => ['nullable', 'numeric', 'min:0'],
+            'active' => ['nullable', 'boolean'],
         ]);
 
         $data['active'] = $request->boolean('active');
         $zone->update($data);
 
         return back()->with('success', 'Zona pengiriman berhasil diperbarui.');
+    }
+
+    /**
+     * Accept Indonesian decimal notation ("100,1" or "1.000,5") and convert
+     * it to the dot-decimal format the database stores ("100.1").
+     *
+     * @return array<string, string|null>
+     */
+    protected function normalizeZoneDistances(Request $request): array
+    {
+        return [
+            'min_distance_km' => $this->toDecimal($request->input('min_distance_km')),
+            'max_distance_km' => $this->toDecimal($request->input('max_distance_km')),
+        ];
+    }
+
+    protected function toDecimal(?string $value): ?string
+    {
+        $value = $value === null ? null : trim($value);
+
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (str_contains($value, ',')) {
+            $value = str_replace('.', '', $value);
+            $value = str_replace(',', '.', $value);
+        }
+
+        return $value;
     }
 
     public function destroyZone(ShippingZone $zone): RedirectResponse
@@ -109,9 +143,9 @@ class ShippingController extends Controller
     public function storeRegion(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'name'        => ['required', 'string', 'max:120', 'unique:international_regions,name'],
+            'name' => ['required', 'string', 'max:120', 'unique:international_regions,name'],
             'rate_per_kg' => ['nullable', 'numeric', 'min:0'],
-            'min_charge'  => ['nullable', 'numeric', 'min:0'],
+            'min_charge' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         InternationalRegion::create($data);
@@ -122,9 +156,9 @@ class ShippingController extends Controller
     public function updateRegion(Request $request, InternationalRegion $region): RedirectResponse
     {
         $data = $request->validate([
-            'name'        => ['required', 'string', 'max:120', 'unique:international_regions,name,'.$region->id],
+            'name' => ['required', 'string', 'max:120', 'unique:international_regions,name,'.$region->id],
             'rate_per_kg' => ['nullable', 'numeric', 'min:0'],
-            'min_charge'  => ['nullable', 'numeric', 'min:0'],
+            'min_charge' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $region->update($data);
@@ -144,11 +178,11 @@ class ShippingController extends Controller
     public function storeCountry(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'region_id'   => ['required', 'integer', 'exists:international_regions,id'],
-            'country'     => ['required', 'string', 'max:120', 'unique:shipping_countries,country'],
+            'region_id' => ['required', 'integer', 'exists:international_regions,id'],
+            'country' => ['required', 'string', 'max:120', 'unique:shipping_countries,country'],
             'rate_per_kg' => ['nullable', 'numeric', 'min:0'],
-            'min_charge'  => ['nullable', 'numeric', 'min:0'],
-            'active'      => ['nullable', 'boolean'],
+            'min_charge' => ['nullable', 'numeric', 'min:0'],
+            'active' => ['nullable', 'boolean'],
         ]);
 
         $data['active'] = $request->boolean('active');
@@ -160,11 +194,11 @@ class ShippingController extends Controller
     public function updateCountry(Request $request, ShippingCountry $country): RedirectResponse
     {
         $data = $request->validate([
-            'region_id'   => ['required', 'integer', 'exists:international_regions,id'],
-            'country'     => ['required', 'string', 'max:120', 'unique:shipping_countries,country,'.$country->id],
+            'region_id' => ['required', 'integer', 'exists:international_regions,id'],
+            'country' => ['required', 'string', 'max:120', 'unique:shipping_countries,country,'.$country->id],
             'rate_per_kg' => ['nullable', 'numeric', 'min:0'],
-            'min_charge'  => ['nullable', 'numeric', 'min:0'],
-            'active'      => ['nullable', 'boolean'],
+            'min_charge' => ['nullable', 'numeric', 'min:0'],
+            'active' => ['nullable', 'boolean'],
         ]);
 
         $data['active'] = $request->boolean('active');
@@ -185,9 +219,9 @@ class ShippingController extends Controller
     public function storeCourier(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'name'  => ['required', 'string', 'max:120'],
-            'type'  => ['required', 'string', 'in:domestic,international'],
-            'active'=> ['nullable', 'boolean'],
+            'name' => ['required', 'string', 'max:120'],
+            'type' => ['required', 'string', 'in:domestic,international'],
+            'active' => ['nullable', 'boolean'],
         ]);
 
         $data['active'] = $request->boolean('active');

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -59,7 +58,7 @@ class Product extends Model
         return [
             'weight' => 'decimal:2',
             'length' => 'decimal:2',
-            'width'  => 'decimal:2',
+            'width' => 'decimal:2',
             'height' => 'decimal:2',
         ];
     }
@@ -90,22 +89,6 @@ class Product extends Model
     public function featured(): HasOne
     {
         return $this->hasOne(FeaturedProduct::class);
-    }
-
-    /**
-     * Whether the product is currently featured (and active).
-     */
-    public function getIsFeaturedAttribute(): bool
-    {
-        return $this->featured && $this->featured->is_featured;
-    }
-
-    /**
-     * Only products that currently have an active flash sale.
-     */
-    public function scopeHasActiveFlashSale(Builder $query): Builder
-    {
-        return $query->whereHas('activeFlashSale');
     }
 
     /**
@@ -175,14 +158,6 @@ class Product extends Model
     }
 
     /**
-     * The normal (non-promo) price to strike-through when a flash sale is active.
-     */
-    public function getNormalPriceAttribute(): float
-    {
-        return $this->regular_price;
-    }
-
-    /**
      * Whether the product currently has an active flash sale.
      */
     public function getHasActiveFlashSaleAttribute(): bool
@@ -215,7 +190,7 @@ class Product extends Model
     {
         return [
             'length' => (float) ($this->length ?? 40),
-            'width'  => (float) ($this->width ?? 30),
+            'width' => (float) ($this->width ?? 30),
             'height' => (float) ($this->height ?? 20),
         ];
     }
@@ -247,4 +222,3 @@ class Product extends Model
             : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     }
 }
-

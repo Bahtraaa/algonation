@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\FeaturedProduct;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Transaction;
@@ -26,34 +27,34 @@ class DatabaseSeeder extends Seeder
         $admin = User::firstOrCreate(
             ['email' => 'admin@algonation.com'],
             [
-                'name'     => 'Admin ALGO NATION',
+                'name' => 'Admin ALGO NATION',
                 'username' => 'admin',
                 'password' => Hash::make('password'),
-                'role'     => 'admin',
-                'status'   => 'active',
+                'role' => 'admin',
+                'status' => 'active',
             ]
         );
 
         $customer = User::firstOrCreate(
             ['email' => 'customer@algonation.com'],
             [
-                'name'     => 'Budi Santoso',
+                'name' => 'Budi Santoso',
                 'username' => 'budi',
                 'password' => Hash::make('password'),
-                'role'     => 'user',
-                'status'   => 'active',
+                'role' => 'user',
+                'status' => 'active',
             ]
         );
 
         $users = [$admin, $customer];
         for ($i = 0; $i < 6; $i++) {
             $users[] = User::create([
-                'name'     => fake()->name(),
+                'name' => fake()->name(),
                 'username' => fake()->userName().$i,
-                'email'    => fake()->unique()->safeEmail(),
+                'email' => fake()->unique()->safeEmail(),
                 'password' => Hash::make('password'),
-                'role'     => 'user',
-                'status'   => fake()->randomElement(['active', 'active', 'active', 'suspended']),
+                'role' => 'user',
+                'status' => fake()->randomElement(['active', 'active', 'active', 'suspended']),
             ]);
         }
 
@@ -87,24 +88,24 @@ class DatabaseSeeder extends Seeder
         $createdProducts = [];
         foreach ($products as $p) {
             $product = Product::create([
-                'name'        => $p['name'],
-                'category'    => $p['category'],
+                'name' => $p['name'],
+                'category' => $p['category'],
                 'description' => $p['description'],
-                'price'       => $p['price'],
-                'stock'       => $p['stock'],
-                'image'       => null,
-                'weight'      => $p['weight'] ?? 300,
-                'length'      => $p['length'] ?? 40,
-                'width'       => $p['width'] ?? 30,
-                'height'      => $p['height'] ?? 20,
+                'price' => $p['price'],
+                'stock' => $p['stock'],
+                'image' => null,
+                'weight' => $p['weight'] ?? 300,
+                'length' => $p['length'] ?? 40,
+                'width' => $p['width'] ?? 30,
+                'height' => $p['height'] ?? 20,
             ]);
 
             foreach ($p['variants'] as $v) {
                 ProductVariant::create([
                     'product_id' => $product->id,
-                    'name'       => $v[0],
-                    'stock'      => $v[1],
-                    'price'      => $v[2],
+                    'name' => $v[0],
+                    'stock' => $v[1],
+                    'price' => $v[2],
                 ]);
             }
 
@@ -117,59 +118,55 @@ class DatabaseSeeder extends Seeder
                 break;
             }
 
-            \App\Models\FeaturedProduct::updateOrCreate(
-                ['product_id' => $product->id],
-                ['is_featured' => true, 'sort_order' => $index]
-            );
+            FeaturedProduct::firstOrCreate(['product_id' => $product->id]);
         }
 
         // ---- Transactions ----
         for ($i = 0; $i < 12; $i++) {
-            $user      = fake()->randomElement($users);
-            $items     = fake()->numberBetween(1, 3);
-            $picked    = fake()->randomElements($createdProducts, $items);
-            $subtotal  = 0;
-            $details   = [];
+            $user = fake()->randomElement($users);
+            $items = fake()->numberBetween(1, 3);
+            $picked = fake()->randomElements($createdProducts, $items);
+            $subtotal = 0;
+            $details = [];
 
             foreach ($picked as $product) {
                 $variant = $product->variants->first();
-                $price   = $variant?->price ?? $product->price;
-                $qty     = fake()->numberBetween(1, 3);
+                $price = $variant?->price ?? $product->price;
+                $qty = fake()->numberBetween(1, 3);
 
                 $details[] = [
                     'product_id' => $product->id,
                     'variant_id' => $variant?->id,
-                    'quantity'   => $qty,
-                    'subtotal'   => $price * $qty,
+                    'quantity' => $qty,
+                    'subtotal' => $price * $qty,
                 ];
 
                 $subtotal += $price * $qty;
             }
 
             $shipping = $subtotal >= 500000 ? 0 : 25000;
-            $status   = fake()->randomElement(['pending', 'processing', 'completed', 'completed', 'completed', 'cancelled']);
+            $status = fake()->randomElement(['pending', 'processing', 'completed', 'completed', 'completed', 'cancelled']);
 
             $transaction = Transaction::create([
-                'user_id'          => $user->id,
-                'total_price'      => $subtotal,
-                'shipping_cost'    => $shipping,
-                'payment_method'   => 'midtrans',
-                'shipping_address' => $user->name."\n08".fake()->numerify('##########')."\nJl. ".fake()->streetName()." No. ".fake()->numberBetween(1, 200).', '.fake()->city(),
-                'status'           => $status,
-                'created_at'       => now()->subDays(fake()->numberBetween(0, 60))->subHours(fake()->numberBetween(0, 23)),
-                'updated_at'       => now()->subDays(fake()->numberBetween(0, 60)),
+                'user_id' => $user->id,
+                'total_price' => $subtotal,
+                'shipping_cost' => $shipping,
+                'payment_method' => 'midtrans',
+                'shipping_address' => $user->name."\n08".fake()->numerify('##########')."\nJl. ".fake()->streetName().' No. '.fake()->numberBetween(1, 200).', '.fake()->city(),
+                'status' => $status,
+                'created_at' => now()->subDays(fake()->numberBetween(0, 60))->subHours(fake()->numberBetween(0, 23)),
+                'updated_at' => now()->subDays(fake()->numberBetween(0, 60)),
             ]);
 
             foreach ($details as $d) {
                 TransactionDetail::create([
                     'transaction_id' => $transaction->id,
-                    'product_id'     => $d['product_id'],
-                    'variant_id'     => $d['variant_id'],
-                    'quantity'       => $d['quantity'],
-                    'subtotal'       => $d['subtotal'],
+                    'product_id' => $d['product_id'],
+                    'variant_id' => $d['variant_id'],
+                    'quantity' => $d['quantity'],
+                    'subtotal' => $d['subtotal'],
                 ]);
             }
         }
     }
 }
-

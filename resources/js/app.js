@@ -253,8 +253,9 @@ window.startDueCountdowns = () => {
 };
 
 // Wire every ".pay-now-btn" button to open the Midtrans Snap popup.
-// The snap callbacks only drive UI redirection; payment verification is always
-// handled server-side by the Midtrans webhook.
+// onSuccess actively verifies + finalizes the payment server-side (the webhook
+// is often delayed/unreachable in local development); onPending/onClose leave
+// the order as "Menunggu Proses Pembayaran" until the gateway confirms it.
 window.initPayNowButtons = () => {
     document.querySelectorAll('.pay-now-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -275,7 +276,20 @@ window.initPayNowButtons = () => {
                 }
 
                 snap.pay(data.snap_token, {
-                    onSuccess: () => { window.location.href = data.redirect_url; },
+                    onSuccess: (result) => {
+                        fetch(data.finalize_url, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrf,
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(result),
+                        })
+                        .then(r => r.json())
+                        .then(() => { window.location.href = data.redirect_url; })
+                        .catch(() => { window.location.href = data.redirect_url; });
+                    },
                     onPending: () => { window.location.href = data.redirect_url; },
                     onError: () => { alert('Pembayaran gagal. Silakan coba lagi.'); btn.disabled = false; },
                     onClose: () => { window.location.href = data.redirect_url; },

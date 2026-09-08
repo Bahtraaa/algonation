@@ -90,6 +90,7 @@ ALGO NATION adalah website e-commerce yang menjual produk pakaian dan aksesoris.
 * Melihat struk/bukti pembayaran
 * Mengelola profil (nama, username, email)
 * Mengubah password
+* Lupa password / reset password via email (dengan rate limiting dan anti-enumeration)
 
 ### Admin
 
@@ -159,10 +160,17 @@ ALGO-NATION/
 │   │   │   ├── CartController.php
 │   │   │   ├── CheckoutController.php
 │   │   │   ├── Controller.php
+│   │   │   ├── ForgotPasswordController.php
 │   │   │   ├── HomeController.php
-│   │   │   └── ProfileController.php
-│   │   └── Middleware/
-│   │       └── AdminMiddleware.php
+│   │   │   ├── ProfileController.php
+│   │   │   └── ResetPasswordController.php
+│   │   ├── Middleware/
+│   │   │   └── AdminMiddleware.php
+│   │   └── Requests/
+│   │       ├── ForgotPasswordRequest.php
+│   │       └── ResetPasswordRequest.php
+│   ├── Mail/
+│   │   └── ResetPasswordMail.php
 │   ├── Models/
 │   │   ├── FeaturedProduct.php
 │   │   ├── FlashSale.php
@@ -176,6 +184,8 @@ ALGO-NATION/
 │   │   ├── Transaction.php
 │   │   ├── TransactionDetail.php
 │   │   └── User.php
+│   ├── Notifications/
+│   │   └── ResetPasswordNotification.php
 │   ├── Providers/
 │   │   └── AppServiceProvider.php
 │   └── Services/
@@ -195,6 +205,7 @@ ALGO-NATION/
 │   ├── mail.php
 │   ├── midtrans.php
 │   ├── queue.php
+│   ├── security.php
 │   ├── services.php
 │   └── session.php
 ├── database/
@@ -225,8 +236,8 @@ ALGO-NATION/
 │       ├── auth/
 │       ├── admin/
 │       ├── products/
-│       ├── cart/
 │       ├── checkout/
+│       ├── emails/
 │       ├── orders/
 │       ├── profile/
 │       ├── landing.blade.php
@@ -253,12 +264,13 @@ ALGO-NATION/
 | Folder | Fungsi |
 |---|---|
 | `app/Http/Controllers/Admin/` | Controller admin (9 file) |
-| `app/Http/Controllers/` | Controller publik dan auth (6 file) |
+| `app/Http/Controllers/` | Controller publik dan auth (8 file) |
 | `app/Models/` | Model Eloquent (12 file) |
 | `app/Services/` | Service layer (5 file) |
 | `config/midtrans.php` | Konfigurasi custom Midtrans |
+| `config/security.php` | Konfigurasi rate limit reset password |
 | `config/services.php` | Konfigurasi WhatsApp CS, OSRM, Nominatim |
-| `database/migrations/` | 18 file migrasi database |
+| `database/migrations/` | 19 file migrasi database |
 | `database/seeders/` | Seeder data awal |
 | `resources/views/admin/` | Template halaman admin |
 | `resources/js/app.js` | Alpine.js stores, keranjang, countdown, Midtrans |
@@ -286,8 +298,8 @@ ALGO-NATION/
 ### 1. Clone Repository
 
 ```bash
-git clone <repository-url>
-cd algo-nation
+git clone https://github.com/Bahtraaa/algonation
+cd algonation
 ```
 
 ### 2. Install Dependency PHP
@@ -415,6 +427,8 @@ MIDTRANS_IS_3DS=true
 | `MIDTRANS_IS_SANITIZED` | Sanitasi input ke Midtrans API |
 | `MIDTRANS_IS_3DS` | Aktifkan 3D Secure untuk pembayaran |
 
+> **Catatan development lokal:** Webhook Midtrans (`POST /midtrans/notification`) tidak dapat diakses dari `localhost`. Untuk itu, verifikasi pembayaran tidak bergantung pada webhook: Snap `onSuccess` memicu endpoint `orders.finalize` (verifikasi signature), dan halaman struk mem-poll `orders.check-status`. Webhook tetap menjadi jalur kanonik di production.
+
 ### WhatsApp Customer Service
 
 ```env
@@ -436,6 +450,29 @@ SHIPPING_GEOCODING_ENDPOINT=https://nominatim.openstreetmap.org
 | `SHIPPING_ROUTING_ENDPOINT` | Endpoint OSRM untuk routing jarak pengiriman |
 | `SHIPPING_ROUTING_MODE` | Mode routing (`driving`) |
 | `SHIPPING_GEOCODING_ENDPOINT` | Endpoint Nominatim untuk geocoding alamat |
+
+### Lupa Password / Password Reset
+
+```env
+PASSWORD_RESET_MAX_ATTEMPTS=4
+PASSWORD_RESET_DECAY_MINUTES=1
+PASSWORD_RESET_BLOCK_MINUTES=30
+PASSWORD_RESET_MAX_ATTEMPTS_PER_IP=20
+```
+
+| Variable | Keterangan |
+|---|---|
+| `PASSWORD_RESET_MAX_ATTEMPTS` | Batas permintaan link reset per kombinasi IP + email dalam periode `DECAY_MINUTES` |
+| `PASSWORD_RESET_DECAY_MINUTES` | Jendela waktu (menit) untuk aturan di atas |
+| `PASSWORD_RESET_BLOCK_MINUTES` | Durasi pemblokiran (menit) setelah melewati batas |
+| `PASSWORD_RESET_MAX_ATTEMPTS_PER_IP` | Batas permintaan link reset per alamat IP dalam periode yang sama |
+
+Perilaku keamanan:
+
+- **Anti-enumeration**: respons identik untuk email terdaftar maupun tidak, tanpa membedakan lewat status, pesan, atau token.
+- **Rate limiting konfigurabel**: enforcer di `ForgotPasswordController` memakai `config/security.php` (nilai via `.env` di atas); setelah melewati batas `MAX_ATTEMPTS` per kombinasi IP + email (atau `MAX_ATTEMPTS_PER_IP` per IP) dalam 1 menit, kombos tersebut **diblokir selama `BLOCK_MINUTES`** (default 30 menit) — mengembalikan **HTTP 429** dengan `retry_after` (JSON, dipakai UI countdown Alpine) atau redirect dengan error saat non-JSON.
+- **Halaman state reset**: token tidak valid menampilkan halaman "Link Tidak Valid", token kedaluwarsa menampilkan halaman "Link Reset Kedaluwarsa" (tanpa form).
+- **Token sekali pakai**: setelah sukses, baris token dihapus dan seluruh sesi lama akun diinvalidasi.
 
 ### Cache & Queue
 
@@ -607,8 +644,6 @@ BROADCAST_CONNECTION=log
 |---|---|---|
 | `id` | bigint (PK) | Auto-increment |
 | `product_id` | foreignId, unique | FK ke `products` (cascade delete) |
-| `is_featured` | boolean, default true | Status unggulan |
-| `sort_order` | unsignedInteger, default 0 | Urutan tampil |
 | `created_at` / `updated_at` | timestamps | Timestamp otomatis |
 
 #### `shipping_settings`
@@ -630,8 +665,8 @@ BROADCAST_CONNECTION=log
 |---|---|---|
 | `id` | bigint (PK) | Auto-increment |
 | `name` | string | Nama zona |
-| `min_distance_km` | unsignedInteger, default 0 | Jarak minimum (km) |
-| `max_distance_km` | unsignedInteger, nullable | Jarak maksimum (km), nullable = tanpa batas |
+| `min_distance_km` | decimal(10,2), default 0 | Jarak minimum (km), mendukung desimal (contoh: `100,1`) |
+| `max_distance_km` | decimal(10,2), nullable | Jarak maksimum (km), nullable = tanpa batas |
 | `rate_per_kg` | decimal(12,2), default 0 | Tarif per kg |
 | `min_charge` | decimal(12,2), default 0 | Biaya minimum |
 | `active` | boolean, default true | Status aktif |
@@ -848,7 +883,7 @@ Produk dikelola sepenuhnya melalui **Admin Panel**:
 
 ### Konsep
 
-Produk Unggulan **bukan** data produk baru yang terpisah. Produk Unggulan adalah **referensi** ke produk yang sudah ada di tabel `products`. Tabel `featured_products` hanya menyimpan `product_id`, `is_featured`, dan `sort_order`.
+Produk Unggulan **bukan** data produk baru yang terpisah. Produk Unggulan adalah **referensi** ke produk yang sudah ada di tabel `products`. Tabel `featured_products` hanya menyimpan `product_id`.
 
 ### Relasi Data
 
@@ -857,8 +892,6 @@ products (tabel utama)
     |
     +---> featured_products (tabel referensi)
             - product_id (FK ke products, unique)
-            - is_featured (boolean)
-            - sort_order (integer)
 ```
 
 ### Aturan Penting
@@ -874,7 +907,6 @@ Admin mengelola Produk Unggulan di halaman `/admin/featured-products`:
 
 * **Create** : Admin memilih produk dari dropdown (hanya produk yang belum unggulan).
 * **Read** : Admin melihat daftar produk unggulan beserta data produk terkini.
-* **Update** : Admin mengubah `sort_order` atau status `is_featured`.
 * **Delete** : Admin menghapus produk dari daftar unggulan (data produk utama tidak terhapus).
 
 ---
@@ -1050,6 +1082,8 @@ Zona ditentukan berdasarkan jarak dari lokasi toko (Jakarta, -6.200000, 106.8166
 | Zona 5 | 501 - 1500 km | 22.000 | 22.000 |
 | Zona 6 | 1501+ km | 25.000 | 25.000 |
 
+Batas jarak zona (`min_distance_km` / `max_distance_km`) disimpan sebagai **decimal(10,2)** sehingga mendukung pecahan km. Admin boleh memasukkan angka desimal dengan **koma** (contoh: `100,1`) atau **titik** (contoh: `100.1`); nilai otomatis dinormalisasi ke format dot sebelum disimpan. Kecocokan zona memakai perbandingan float langsung (bukan pembulatan integer `ceil`), jadi jarak `100,1 km` cocok dengan batas `100,1 km` secara presisi. Tampilan jarak (checkout & panel admin) juga **tidak pernah membulatkan ke atas**: nilai dipotong (truncate), misalnya jarak `100,16 km` ditampilkan sebagai `100,1 km`.
+
 ### Pengiriman Internasional
 
 | Region | Tarif/kg | Biaya Minimum |
@@ -1108,7 +1142,7 @@ Ringkasan Pesanan (items + subtotal + ongkir + total)
 Klik "Bayar Sekarang"
     |
     v
-Buat Transaksi (POST /checkout)
+Buat Transaksi (POST /checkout)  (payment_status = pending, batas 15 menit)
     |
     v
 Buat Midtrans Snap Token
@@ -1116,14 +1150,27 @@ Buat Midtrans Snap Token
     v
 Frontend: Buka Midtrans Snap Popup
     |
-    v
-User Memilih Metode Pembayaran
+    +--> User selesai bayar (onSuccess)
+    |       |
+    |       v
+    |    POST /orders/{id}/finalize  -- verifikasi signature Snap
+    |       |
+    |       v
+    |    payment_status = paid --> lanjut ke pemrosesan pesanan
+    |       |
+    |       v
+    |    Redirect ke struk (Pembayaran Berhasil)
+    |
+    +--> User klik X / batal (onClose) atau metode pending (onPending)
+    |       |
+    |       v
+    |    payment_status = pending  (Menunggu Proses Pembayaran)
+    |       |
+    |       v
+    |    Redirect ke struk; halaman mem-poll status sampai konfirmasi
     |
     v
-Proses Pembayaran
-    |
-    v
-Status: Paid / Failed / Expired
+Status: Paid / Failed / Expired / Cancelled
 ```
 
 ### Validasi Checkout
@@ -1146,6 +1193,12 @@ Saat checkout berhasil, sistem menyimpan:
 * Setiap pesanan baru memiliki **batas waktu pembayaran 15 menit** (`payment_due_at = created_at + 15 menit`).
 * Jika pembayaran tidak diselesaikan dalam 15 menit, pesanan otomatis dibatalkan oleh sistem (server-side, bukan timer frontend).
 * Saat expired: stok flash sale dikembalikan, status pesanan diubah menjadi `cancelled`, payment_status diubah menjadi `expired`.
+* Deadline lokal ini adalah **heuristik**: jika gateway kemudian mengonfirmasi pembayaran (webhook/onSuccess terverifikasi) untuk order yang sudah expired, sistem **memulihkannya ke `paid`** — stok flash sale di-reservasi ulang dan pesanan dilanjutkan ke pemrosesan.
+
+### Status "Menunggu Proses Pembayaran"
+
+* Status `pending` (**Menunggu Proses Pembayaran**) hanya muncul ketika user **menutup popup tanpa menyelesaikan pembayaran (klik X / batal)** atau saat metode pembayaran butuh waktu konfirmasi (contoh: transfer bank / QRIS).
+* Jika user **sudah membayar** (`onSuccess` terverifikasi), order langsung diproses (tidak ada pending) — tidak bergantung pada webhook yang mungkin telat/tak sampai.
 
 ---
 
@@ -1168,8 +1221,8 @@ ALGO NATION menggunakan **Midtrans Snap** sebagai payment gateway.
 
 | Status | Keterangan |
 |---|---|
-| `pending` | Menunggu pembayaran |
-| `paid` | Pembayaran berhasil (hanya dari konfirmasi Midtrans) |
+| `pending` | Menunggu pembayaran (hanya muncul saat user menutup popup / klik X / batal, atau metode butuh konfirmasi) |
+| `paid` | Pembayaran berhasil (hanya dari konfirmasi Midtrans yang terverifikasi) |
 | `failed` | Pembayaran gagal |
 | `expired` | Pembayaran kedaluwarsa (15 menit) |
 | `cancelled` | Pembayaran dibatalkan |
@@ -1177,6 +1230,11 @@ ALGO NATION menggunakan **Midtrans Snap** sebagai payment gateway.
 ### Aturan Penting
 
 **Status `paid` HANYA boleh ditetapkan setelah payment gateway memberikan konfirmasi pembayaran yang telah diverifikasi.**
+
+Konfirmasi yang diterima:
+
+1. **Midtrans Webhook** (`POST /midtrans/notification`) dengan signature valid, dikonfirmasi ulang ke Midtrans API.
+2. **Endpoint Finalize** (`POST /orders/{id}/finalize`) — dipanggil frontend saat Snap `onSuccess`. Hasil callback Snap diverifikasi signature-nya (`signature_key`) dengan aturan yang sama seperti webhook; bila signature tidak ada, diverifikasi ulang ke Midtrans API.
 
 Status `paid` TIDAK boleh ditetapkan hanya karena:
 * Checkout berhasil.
@@ -1187,10 +1245,11 @@ Status `paid` TIDAK boleh ditetapkan hanya karena:
 ### Transisi Status
 
 ```text
-pending --> paid       (setelah notifikasi settlement/capture dari Midtrans)
+pending --> paid       (setelah verifikasi settlement/capture dari Midtrans)
 pending --> failed     (setelah notifikasi deny/failure)
 pending --> expired    (setelah 15 menit tanpa pembayaran)
 pending --> cancelled  (setelah notifikasi cancel atau pembatalan user)
+expired --> paid       (recovery: gateway mengonfirmasi pembayaran yang terlambat)
 ```
 
 ### Idempotensi
@@ -1200,7 +1259,7 @@ pending --> cancelled  (setelah notifikasi cancel atau pembatalan user)
 
 ### Terminal State
 
-Status `expired`, `cancelled`, dan `failed` adalah **terminal state**. Transaksi tidak akan berubah ke status lain terlepas dari notifikasi duplikat dari Midtrans.
+Hanya `cancelled` dan `failed` yang merupakan **terminal state** — tidak berubah ke status lain apa pun notifikasinya. Status `expired` bukan terminal: karena ia hanya heuristik deadline lokal, pembayaran yang benar-benar terkonfirmasi dapat memulihkannya ke `paid`. Saat recovery terjadi, order dibuka kembali (`shipping_status = menunggu_diproses`) dan stok flash sale di-reservasi ulang.
 
 ---
 
@@ -1226,16 +1285,19 @@ POST /midtrans/notification
 CheckoutController::notification()
     |
     v
-PaymentService::checkStatus() -- verifikasi ke Midtrans API
+PaymentService::checkStatus() -- verifikasi ke Midtrans API DULU (double-check)
     |
     v
 PaymentService::mapPaymentStatus() -- map status Midtrans ke internal
     |
     v
+Jika masih pending (belum ada konfirmasi) --> terapkan deadline 15 menit (expired)
+    |
+    v
 PaymentService::applyPaymentStatus() -- update status transaksi
     |
     v
-Jika paid --> kurangi stok produk/variant
+Jika paid --> lanjutkan pemrosesan pesanan (stok di-reservasi ulang bila recovery dari expired)
     |
     v
 Response 200 OK ke Midtrans
@@ -1244,7 +1306,18 @@ Response 200 OK ke Midtrans
 ### Verifikasi Ganda
 
 1. Menerima notification dari Midtrans.
-2. Mengambil status transaksi langsung dari Midtrans API (`Midtrans\Transaction::status()`).
+2. Mengambil status transaksi langsung dari Midtrans API (`Midtrans\Transaction::status()`) **sebelum** menerapkan deadline lokal — pembayaran yang terkonfirmasi tidak akan pernah ditimpa oleh expiry 15 menit.
+
+### Finalisasi via Snap (`onSuccess`)
+
+Webhook bisa telat atau tidak sampai (umum di development lokal karena Midtrans tidak bisa menjangkau `localhost`). Untuk itu frontend memanggil **`POST /orders/{id}/finalize`** segera setelah Snap melaporkan `onSuccess`:
+
+1. `order_id` dicocokkan dengan transaksi.
+2. `signature_key` dari hasil Snap diverifikasi (hash SHA-512 + server key, tanpa panggilan jaringan — tidak bisa hang).
+3. Jika signature tidak ada, diverifikasi ulang ke Midtrans API; bila API juga tak terjangkau, order tetap pending (ditolak halus).
+4. Jika terverifikasi settlement/capture-accept → `payment_status = paid` dan order dilanjutkan.
+
+Halaman struk juga mem-**poll** `POST /orders/{id}/check-status` setiap ±5 detik selama masih `pending`, sehingga status terkonfirmasi langsung tampil tanpa reload manual.
 
 ---
 
@@ -1299,8 +1372,9 @@ Status alternatif: `pengiriman_gagal`, `dibatalkan`.
 
 | Status | Diubah Oleh |
 |---|---|
-| `payment_status: paid` | Sistem otomatis (via webhook Midtrans) |
+| `payment_status: paid` | Sistem otomatis (webhook Midtrans) **atau** endpoint `orders.finalize` saat Snap `onSuccess` |
 | `payment_status: expired` | Sistem otomatis (15 menit timeout) |
+| `payment_status: expired -> paid` | Recovery otomatis saat gateway mengonfirmasi pembayaran yang terlambat |
 | `order_status: cancelled` | Sistem (expired), user (cancel), atau admin |
 | `shipping_status` | Admin (melalui panel admin) |
 
@@ -1522,9 +1596,8 @@ php artisan test
 tests/
 ├── Feature/
 │   ├── CheckoutControllerTest.php
-│   └── ExampleTest.php
-├── Unit/
-│   └── ExampleTest.php
+│   ├── ExampleTest.php
+│   └── ForgotPasswordTest.php
 ├── Pest.php
 └── TestCase.php
 ```

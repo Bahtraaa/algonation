@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ShippingCountry;
+use App\Models\ShippingCourier;
 use App\Models\ShippingSetting;
 use App\Models\ShippingZone;
 use App\Models\Transaction;
@@ -58,49 +59,49 @@ class ShippingService
 
         $shippingType = $this->determineShippingType($origin['country'], $destination['country']);
         $actualWeight = $this->actualWeight($items);
-        $volumetric   = $this->volumetricWeight($items, $shippingType);
-        $billable     = $this->billableWeight($actualWeight, $volumetric);
+        $volumetric = $this->volumetricWeight($items, $shippingType);
+        $billable = $this->billableWeight($actualWeight, $volumetric);
 
         $distance = $this->shippingDistance($origin, $destination);
 
-        $zone      = null;
-        $rate      = 0.0;
+        $zone = null;
+        $rate = 0.0;
         $minCharge = 0.0;
-        $region    = null;
-        $country   = null;
+        $region = null;
+        $country = null;
 
         if ($shippingType === 'domestic') {
-            $zone      = $this->determineShippingZone($distance);
-            $rate      = $zone ? (float) $zone->rate_per_kg : 0.0;
+            $zone = $this->determineShippingZone($distance);
+            $rate = $zone ? (float) $zone->rate_per_kg : 0.0;
             $minCharge = $zone ? (float) $zone->min_charge : 0.0;
         } else {
             $countryCfg = $this->lookupCountry($destination['country']);
-            $country    = $countryCfg;
-            $region     = $countryCfg?->region;
-            $rate       = $countryCfg ? (float) ($countryCfg->rate_per_kg ?? $countryCfg->region?->rate_per_kg ?? 0) : 0.0;
-            $minCharge  = $countryCfg ? (float) ($countryCfg->min_charge ?? $countryCfg->region?->min_charge ?? 0) : 0.0;
+            $country = $countryCfg;
+            $region = $countryCfg?->region;
+            $rate = $countryCfg ? (float) ($countryCfg->rate_per_kg ?? $countryCfg->region?->rate_per_kg ?? 0) : 0.0;
+            $minCharge = $countryCfg ? (float) ($countryCfg->min_charge ?? $countryCfg->region?->min_charge ?? 0) : 0.0;
         }
 
-        $cost   = $this->shippingCost($billable, $rate, $minCharge);
+        $cost = $this->shippingCost($billable, $rate, $minCharge);
         $courier = $this->defaultCourier($shippingType);
 
         return [
-            'shipping_type'        => $shippingType,
-            'origin_country'       => $origin['country'],
-            'destination_country'  => $destination['country'],
-            'destination_city'     => $destination['city'] ?? null,
-            'destination_state'    => $destination['state'] ?? null,
+            'shipping_type' => $shippingType,
+            'origin_country' => $origin['country'],
+            'destination_country' => $destination['country'],
+            'destination_city' => $destination['city'] ?? null,
+            'destination_state' => $destination['state'] ?? null,
             'destination_postal_code' => $destination['postal_code'] ?? null,
-            'distance'             => $distance,
-            'actual_weight'        => $actualWeight,
-            'volumetric_weight'    => $volumetric,
-            'billable_weight'      => $billable,
-            'shipping_zone'        => $zone?->name,
-            'region'               => $region?->name,
-            'rate'                 => $rate,
-            'min_charge'           => $minCharge,
-            'shipping_cost'        => $cost,
-            'shipping_courier'     => $courier,
+            'distance' => $distance,
+            'actual_weight' => $actualWeight,
+            'volumetric_weight' => $volumetric,
+            'billable_weight' => $billable,
+            'shipping_zone' => $zone?->name,
+            'region' => $region?->name,
+            'rate' => $rate,
+            'min_charge' => $minCharge,
+            'shipping_cost' => $cost,
+            'shipping_courier' => $courier,
         ];
     }
 
@@ -110,6 +111,7 @@ class ShippingService
     public function shippingCost(float $billableWeight, float $ratePerKg, float $minCharge = 0): float
     {
         $cost = $billableWeight * $ratePerKg;
+
         return round(max($cost, $minCharge), 2);
     }
 
@@ -132,6 +134,7 @@ class ShippingService
             $perUnit = (float) ($item['weight_kg'] ?? $item['weight'] ?? 0);
             $total += $perUnit * $qty;
         }
+
         return round($total, 2);
     }
 
@@ -146,7 +149,7 @@ class ShippingService
             $qty = (float) ($item['quantity'] ?? 1);
             $dims = $item['dimensions'] ?? [];
             $length = (float) ($dims['length'] ?? 0);
-            $width  = (float) ($dims['width'] ?? 0);
+            $width = (float) ($dims['width'] ?? 0);
             $height = (float) ($dims['height'] ?? 0);
 
             if ($length <= 0 || $width <= 0 || $height <= 0) {
@@ -170,10 +173,10 @@ class ShippingService
 
     public function shippingDistance(array $origin, array $destination): float
     {
-        $originLat  = (float) ($origin['latitude'] ?? 0);
-        $originLon  = (float) ($origin['longitude'] ?? 0);
-        $destLat    = (float) ($destination['latitude'] ?? 0);
-        $destLon    = (float) ($destination['longitude'] ?? 0);
+        $originLat = (float) ($origin['latitude'] ?? 0);
+        $originLon = (float) ($origin['longitude'] ?? 0);
+        $destLat = (float) ($destination['latitude'] ?? 0);
+        $destLon = (float) ($destination['longitude'] ?? 0);
 
         if ($this->hasValidCoordinates($originLat, $originLon) && $this->hasValidCoordinates($destLat, $destLon)) {
             $settings = $this->settings();
@@ -190,11 +193,6 @@ class ShippingService
         return 0.0;
     }
 
-    public function calculateDistance(array $origin, array $destination): float
-    {
-        return $this->shippingDistance($origin, $destination);
-    }
-
     /**
      * Priority: road/driving distance via routing API, else straight-line Haversine.
      */
@@ -208,7 +206,7 @@ class ShippingService
         }
 
         try {
-            $url = rtrim($baseUrl, '/') . "/route/v1/{$key}/{$originLon},{$originLat};{$destLon},{$destLat}";
+            $url = rtrim($baseUrl, '/')."/route/v1/{$key}/{$originLon},{$originLat};{$destLon},{$destLat}";
             $response = Http::timeout(5)->get($url, ['overview' => 'false']);
 
             if ($response->ok() && $response->json('code') === 'Ok') {
@@ -250,10 +248,10 @@ class ShippingService
     {
         return ShippingZone::query()
             ->where('active', true)
-            ->where('min_distance_km', '<=', (int) floor($distance))
+            ->where('min_distance_km', '<=', $distance)
             ->where(function ($q) use ($distance) {
                 $q->whereNull('max_distance_km')
-                  ->orWhere('max_distance_km', '>=', (int) ceil($distance));
+                    ->orWhere('max_distance_km', '>=', $distance);
             })
             ->orderBy('min_distance_km')
             ->first();
@@ -270,7 +268,7 @@ class ShippingService
 
     public function defaultCourier(string $shippingType): ?string
     {
-        $courier = \App\Models\ShippingCourier::query()
+        $courier = ShippingCourier::query()
             ->where('active', true)
             ->where('type', $shippingType)
             ->first();
@@ -287,9 +285,9 @@ class ShippingService
         $settings = $this->settings();
 
         return [
-            'country'   => $settings?->origin_country ?? 'Indonesia',
-            'city'      => $settings?->origin_city,
-            'latitude'  => $settings ? (float) $settings->origin_latitude : 0.0,
+            'country' => $settings?->origin_country ?? 'Indonesia',
+            'city' => $settings?->origin_city,
+            'latitude' => $settings ? (float) $settings->origin_latitude : 0.0,
             'longitude' => $settings ? (float) $settings->origin_longitude : 0.0,
         ];
     }
@@ -330,12 +328,12 @@ class ShippingService
             $response = Http::timeout(6)
                 ->withHeaders([
                     'User-Agent' => config('services.nominatim.user_agent', 'ALGO NATION'),
-                    'Accept'     => 'application/json',
+                    'Accept' => 'application/json',
                 ])
                 ->get($endpoint, [
-                    'q'      => $query,
+                    'q' => $query,
                     'format' => 'json',
-                    'limit'  => 1,
+                    'limit' => 1,
                 ]);
 
             $data = $response->json();
@@ -383,12 +381,12 @@ class ShippingService
     public function resolveUpdate(Transaction $transaction, array $input): array
     {
         $update = [
-            'shipping_courier'         => $input['shipping_courier'] ?? $transaction->shipping_courier,
-            'tracking_number'          => $input['tracking_number'] ?? $transaction->tracking_number,
-            'shipping_status'          => $input['shipping_status'],
+            'shipping_courier' => $input['shipping_courier'] ?? $transaction->shipping_courier,
+            'tracking_number' => $input['tracking_number'] ?? $transaction->tracking_number,
+            'shipping_status' => $input['shipping_status'],
             'estimated_delivery_start' => $input['estimated_delivery_start'] ?? $transaction->estimated_delivery_start,
-            'estimated_delivery_end'   => $input['estimated_delivery_end'] ?? $transaction->estimated_delivery_end,
-            'shipping_updated_at'      => now(),
+            'estimated_delivery_end' => $input['estimated_delivery_end'] ?? $transaction->estimated_delivery_end,
+            'shipping_updated_at' => now(),
         ];
 
         $status = $input['shipping_status'];
@@ -402,7 +400,7 @@ class ShippingService
 
         if ($status === 'pesanan_diterima' && ! $transaction->delivered_at) {
             $update['delivered_at'] = now();
-            $update['status']       = 'completed';
+            $update['status'] = 'completed';
         }
 
         if ($status === 'dibatalkan') {
