@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Mail\ResetPasswordMail;
+use App\Notifications\Channels\MailtrapApiChannel;
 use Illuminate\Mail\Mailable;
 use Illuminate\Notifications\Notification;
 
@@ -22,7 +23,7 @@ class ResetPasswordNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return [MailtrapApiChannel::class];
     }
 
     /**

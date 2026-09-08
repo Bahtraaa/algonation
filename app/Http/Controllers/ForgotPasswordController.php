@@ -73,10 +73,19 @@ class ForgotPasswordController extends Controller
             ]);
         }
 
+        $deliveryFailed = false;
+
         try {
-            Password::sendResetLink($request->only('email'));
+            $status = Password::sendResetLink($request->only('email'));
         } catch (Throwable $e) {
             report($e);
+            $deliveryFailed = true;
+        }
+
+        if ($deliveryFailed) {
+            return $request->expectsJson()
+                ? response()->json(['message' => 'Email reset password gagal dikirim. Silakan coba lagi nanti.'], 503)
+                : back()->withErrors(['email' => 'Email reset password gagal dikirim. Silakan coba lagi nanti.']);
         }
 
         $successMessage = 'Jika email tersebut terdaftar, instruksi reset password telah dikirim. Silakan periksa inbox email kamu.';
