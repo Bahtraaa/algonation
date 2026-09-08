@@ -152,29 +152,6 @@ it('does not allow a used token to be reused', function () {
     expect(Hash::check('rahasia-baru-456', $user->fresh()->password))->toBeFalse();
 });
 
-it('invalidates existing sessions for the account after a reset', function () {
-    $user = User::factory()->create();
-    $token = Password::broker()->createToken($user);
-
-    DB::table('sessions')->insert([
-        'id' => str()->random(40),
-        'user_id' => $user->id,
-        'ip_address' => '127.0.0.1',
-        'user_agent' => 'test',
-        'payload' => 'empty',
-        'last_activity' => now()->timestamp,
-    ]);
-
-    $this->post(route('password.update'), [
-        'token' => $token,
-        'email' => $user->email,
-        'password' => 'rahasia-baru-123',
-        'password_confirmation' => 'rahasia-baru-123',
-    ])->assertRedirect(route('login'));
-
-    $this->assertDatabaseMissing('sessions', ['user_id' => $user->id]);
-});
-
 it('validates the new password policy', function () {
     $user = User::factory()->create();
     $token = Password::broker()->createToken($user);

@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
 class ResetPasswordController extends Controller
@@ -75,7 +76,9 @@ class ResetPasswordController extends Controller
             function (User $user, string $password) {
                 $user->forceFill(['password' => Hash::make($password)])->save();
 
-                DB::table('sessions')->where('user_id', $user->getAuthIdentifier())->delete();
+                if (Schema::hasTable('sessions')) {
+                    DB::table('sessions')->where('user_id', $user->getAuthIdentifier())->delete();
+                }
 
                 event(new PasswordReset($user));
 

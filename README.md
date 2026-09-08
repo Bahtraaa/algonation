@@ -135,7 +135,7 @@ ALGO NATION adalah website e-commerce yang menjual produk pakaian dan aksesoris.
 | OSRM | Routing engine untuk perhitungan jarak pengiriman |
 | Nominatim | Geocoding service untuk konversi alamat ke koordinat |
 | Pest 3 | Testing framework (PHP) |
-| Session (Database) | Manajemen sesi user |
+| Session (File) | Manajemen sesi user |
 
 ---
 
@@ -270,7 +270,7 @@ ALGO-NATION/
 | `config/midtrans.php` | Konfigurasi custom Midtrans |
 | `config/security.php` | Konfigurasi rate limit reset password |
 | `config/services.php` | Konfigurasi WhatsApp CS, OSRM, Nominatim |
-| `database/migrations/` | 19 file migrasi database |
+| `database/migrations/` | 17 file migrasi database |
 | `database/seeders/` | Seeder data awal |
 | `resources/views/admin/` | Template halaman admin |
 | `resources/js/app.js` | Alpine.js stores, keranjang, countdown, Midtrans |
@@ -402,7 +402,7 @@ DB_PASSWORD=
 ### Session
 
 ```env
-SESSION_DRIVER=database
+SESSION_DRIVER=file
 SESSION_LIFETIME=120
 SESSION_ENCRYPT=false
 SESSION_PATH=/
@@ -521,7 +521,6 @@ BROADCAST_CONNECTION=log
 | `shipping_couriers` | Daftar kurir pengiriman |
 | `cache` | Cache application |
 | `cache_locks` | Lock cache |
-| `sessions` | Sesi pengguna |
 | `jobs` | Antrian job |
 | `job_batches` | Batch job |
 | `failed_jobs` | Job yang gagal |
@@ -737,7 +736,7 @@ erDiagram
 
 ### Sistem Login
 
-ALGO NATION menggunakan sistem autentikasi berbasis **session** (database driver) dengan role-based access control (RBAC).
+ALGO NATION menggunakan sistem autentikasi berbasis **session** (file driver) dengan role-based access control (RBAC).
 
 **Dua role pengguna:**
 
@@ -1631,7 +1630,7 @@ Periksa: `php artisan storage:link`, file di `storage/app/public/products/`.
 
 ### Session Expired (419)
 
-Periksa: `SESSION_DRIVER=database`, tabel `sessions` sudah dibuat.
+Periksa: `SESSION_DRIVER=file`, pastikan folder `storage/framework/sessions` writable.
 
 ### Midtrans Snap Popup Tidak Muncul
 
