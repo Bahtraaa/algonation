@@ -66,7 +66,7 @@
 
                 <div>
                     <label class="label">Nama Produk</label>
-                    <input type="text" name="name" value="{{ old('name') }}" required class="input" placeholder="Contoh: Lemari Pakaian Minimalis">
+                    <input type="text" name="name" value="{{ old('name') }}" required class="input" placeholder="Contoh: Jaket Bomber Urban Minimalis">
                 </div>
 
                 <div class="grid gap-4 sm:grid-cols-2">

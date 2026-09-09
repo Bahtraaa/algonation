@@ -25,22 +25,22 @@ class DatabaseSeeder extends Seeder
 
         // ---- Users ----
         $admin = User::firstOrCreate(
-            ['email' => 'admin@algonation.com'],
+            ['email' => 'adminalgo@gmail.com'],
             [
-                'name' => 'Admin ALGO NATION',
+                'name' => 'Admin',
                 'username' => 'admin',
-                'password' => Hash::make('password'),
+                'password' => Hash::make('sCvagg*0'),
                 'role' => 'admin',
                 'status' => 'active',
             ]
         );
 
         $customer = User::firstOrCreate(
-            ['email' => 'customer@algonation.com'],
+            ['email' => 'usernamealgo@gmail.com'],
             [
-                'name' => 'Budi Santoso',
+                'name' => 'Budiono Siregar',
                 'username' => 'budi',
-                'password' => Hash::make('password'),
+                'password' => Hash::make('kHabdj%88'),
                 'role' => 'user',
                 'status' => 'active',
             ]
@@ -58,52 +58,246 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // ---- Products ----
+        // ---- Products (Synchronized from algonation.sql) ----
         $products = [
-            ['name' => 'Lemari Pakaian Minimalis 3 Pintu', 'category' => 'Lemari', 'price' => 2450000, 'stock' => 12, 'description' => 'Lemari pakaian minimalis dengan 3 pintu sliding, material HDF berkualitas, cocok untuk kamar tidur modern.', 'variants' => [['Warna Putih', 5, null], ['Warna Coklat', 7, null]]],
-            ['name' => 'Lemari TV Rack Kayu Jati', 'category' => 'Lemari', 'price' => 1850000, 'stock' => 8, 'description' => 'Rak TV dari kayu jati dengan finishing natural, memiliki laci dan rak penyimpanan.', 'variants' => []],
-
-            ['name' => 'Kursi Kantor Ergonomis', 'category' => 'Kursi', 'price' => 899000, 'stock' => 20, 'description' => 'Kursi kantor ergonomis dengan sandaran jaring, penyangga lumbar, dan tinggi adjustable.', 'variants' => [['Hitam', 10, 899000], ['Biru', 6, 949000], ['Abu-abu', 4, 899000]]],
-            ['name' => 'Kurzsi Makan Kayu Set 4', 'category' => 'Kursi', 'price' => 1250000, 'stock' => 6, 'description' => 'Set 4 kursi makan dari kayu solid dengan bantalan dudukan empuk.', 'variants' => []],
-
-            ['name' => 'Meja Makan Kayu 6 Kursi', 'category' => 'Meja', 'price' => 3250000, 'stock' => 5, 'description' => 'Meja makan besar untuk 6 orang dari kayu mahoni solid, cocok untuk ruang makan keluarga.', 'variants' => []],
-            ['name' => 'Meja Belajar Minimalis', 'category' => 'Meja', 'price' => 649000, 'stock' => 25, 'description' => 'Meja belajar minimalis dengan rak buku dan laci, ukuran compact untuk kamar anak.', 'variants' => [['Putih', 15, 649000], ['Coklat', 10, 599000]]],
-
-            ['name' => 'Piring Keramik Premium Set 6', 'category' => 'Piring', 'price' => 249000, 'stock' => 40, 'description' => 'Set 6 piring keramik premium ukuran 10 inci, microwave & dishwasher safe.', 'variants' => [['Motif Bunga', 20, 249000], ['Polos Putih', 20, 229000]]],
-            ['name' => 'Piring Makan Melamin Set 12', 'category' => 'Piring', 'price' => 189000, 'stock' => 35, 'description' => 'Set 12 piring melamin anti pecah, cocok untuk restoran dan rumah tangga.', 'variants' => []],
-
-            ['name' => 'Mangkuk Sup Keramik Set 4', 'category' => 'Mangkuk', 'price' => 159000, 'stock' => 30, 'description' => 'Mangkuk sup keramik elegant set 4, kapasitas 500ml, aman untuk microwave.', 'variants' => []],
-
-            ['name' => 'Gelas Kaca Kopi Set 6', 'category' => 'Gelas', 'price' => 129000, 'stock' => 50, 'description' => 'Gelas kaca tebal untuk kopi atau teh, set 6 dengan kapasitas 300ml.', 'variants' => [['Bening', 30, 129000], ['Hijau', 20, 139000]]],
-
-            ['name' => 'Sendok Stainless Set 12', 'category' => 'Sendok', 'price' => 99000, 'stock' => 60, 'description' => 'Sendok makan stainless steel berkualitas, anti karat, set 12 pcs.', 'variants' => []],
-
-            ['name' => 'Garpu Stainless Set 12', 'category' => 'Garpu', 'price' => 99000, 'stock' => 60, 'description' => 'Garpu makan stainless steel berkualitas, anti karat, set 12 pcs.', 'variants' => []],
-
-            ['name' => 'Meja Rias Minimalis', 'category' => 'Meja', 'price' => 1150000, 'stock' => 3, 'description' => 'Meja rias minimalis dengan cermin dan lampu LED.', 'variants' => []],
-            ['name' => 'Kursi Sofa Santai', 'category' => 'Kursi', 'price' => 799000, 'stock' => 2, 'description' => 'Kursi sofa santai dengan bahan kain beludru premium.', 'variants' => [['Merah', 1, 799000], ['Biru Navy', 1, 849000]]],
-            ['name' => 'Set Piring & Mangkuk Keramik', 'category' => 'Piring', 'price' => 329000, 'stock' => 4, 'description' => 'Paket komplit piring dan mangkuk keramik untuk kebutuhan sehari-hari.', 'variants' => []],
+            [
+                'id' => 1,
+                'name' => 'Celana Jeans',
+                'category' => 'Bottoms',
+                'image' => 'products/Fbc8UQUgpwvCxmiR8fbJRwMlsbQ8ZiXPk7s7LYhi.jpg',
+                'description' => 'celana jeans kekinian dan terbaru 2026',
+                'stock' => 8,
+                'price' => 300000.00,
+                'weight' => 500,
+                'length' => 40,
+                'width' => 30,
+                'height' => 5,
+                'variants' => [
+                    ['Warna Putih', 5, null],
+                    ['Warna Abu', 7, null],
+                ],
+            ],
+            [
+                'id' => 16,
+                'name' => 'Hoodie Black mamba',
+                'category' => 'Outerwear',
+                'image' => 'products/MMGkdTmHX3HtdQU73bMmAkoCqlcyPaueJFXygFQ7.jpg',
+                'description' => 'Hoodie Black Mamba streetwear premium',
+                'stock' => 101,
+                'price' => 250000.00,
+                'weight' => 600,
+                'length' => 40,
+                'width' => 30,
+                'height' => 5,
+                'variants' => [],
+            ],
+            [
+                'id' => 17,
+                'name' => 'Topi Merah',
+                'category' => 'Hats',
+                'image' => 'products/dhDNPcGSdGvkrYOuEVIHnf0JHwwnpnvAIhpRA4cd.jpg',
+                'description' => 'topi merah polos',
+                'stock' => 52,
+                'price' => 75000.00,
+                'weight' => 300,
+                'length' => 10,
+                'width' => 13,
+                'height' => 15,
+                'variants' => [],
+            ],
+            [
+                'id' => 19,
+                'name' => 'Sepatu Kulit',
+                'category' => 'Footwear',
+                'image' => 'products/CPau4usMBGuNUxLdnZrqYjkdlY7h1yp4OWAIAUqJ.jpg',
+                'description' => 'sepatu kulit warna hitam',
+                'stock' => 98,
+                'price' => 500000.00,
+                'weight' => 800,
+                'length' => 32,
+                'width' => 20,
+                'height' => 12,
+                'variants' => [],
+            ],
+            [
+                'id' => 22,
+                'name' => 'Sepatu lari',
+                'category' => 'Footwear',
+                'image' => 'products/CSC4ir1CgWbjiyjTLsQdKz2hFnn6eUP2jlwko2Dh.jpg',
+                'description' => 'Sepatu lari olahraga kasual adem dan empuk',
+                'stock' => 101,
+                'price' => 400000.00,
+                'weight' => 750,
+                'length' => 30,
+                'width' => 20,
+                'height' => 12,
+                'variants' => [],
+            ],
+            [
+                'id' => 23,
+                'name' => 'Nike Air Jordan Wanita',
+                'category' => 'Footwear',
+                'image' => 'products/ucpvuE3z6uGYQeExweXKlTtZLVJifmtGdT8PNdvP.jpg',
+                'description' => 'Nike Air Jordan Gorpcore Indie Sneakers Wanita white pink',
+                'stock' => 97,
+                'price' => 700000.00,
+                'weight' => 850,
+                'length' => 32,
+                'width' => 22,
+                'height' => 14,
+                'variants' => [],
+            ],
+            [
+                'id' => 24,
+                'name' => 'Stay Bag',
+                'category' => 'Bags',
+                'image' => 'products/JApW0FN7fcX1esggJWOY8gNWTVBzKeZsTBvpuMpk.webp',
+                'description' => 'Stay Bag Black and Brown',
+                'stock' => 993,
+                'price' => 1890000.00,
+                'weight' => 300,
+                'length' => 40,
+                'width' => 30,
+                'height' => 20,
+                'variants' => [],
+            ],
+            [
+                'id' => 25,
+                'name' => "Berto's Hat",
+                'category' => 'Hats',
+                'image' => 'products/F0BSfxSn0nM0IodKu7zjgWpzbQ2EtojF51T3g5EM.webp',
+                'description' => "Topi Berto's Hat edisi terbatas",
+                'stock' => 109,
+                'price' => 1250000.00,
+                'weight' => 200,
+                'length' => 20,
+                'width' => 20,
+                'height' => 12,
+                'variants' => [],
+            ],
+            [
+                'id' => 26,
+                'name' => 'Kaos Kasual Pria',
+                'category' => 'Casual T-Shirt',
+                'image' => 'products/2j4rh4MDlV84hAvvH9Rrn3DY1vIvZ6CtnDKmPazm.webp',
+                'description' => 'Kaos kasual pria warna putih',
+                'stock' => 99,
+                'price' => 75000.00,
+                'weight' => 220,
+                'length' => 30,
+                'width' => 20,
+                'height' => 2,
+                'variants' => [],
+            ],
+            [
+                'id' => 27,
+                'name' => 'Kaos Kasual Pria',
+                'category' => 'Casual T-Shirt',
+                'image' => 'products/pNNyFcN4llcCid6fn0byzEKVyyO97EypzCctW8Tk.webp',
+                'description' => 'Kaos kasual pria warna putih',
+                'stock' => 100,
+                'price' => 75000.00,
+                'weight' => 220,
+                'length' => 30,
+                'width' => 20,
+                'height' => 2,
+                'variants' => [],
+            ],
+            [
+                'id' => 28,
+                'name' => 'Jaket The North Face',
+                'category' => 'Outerwear',
+                'image' => 'products/FjsxbEyu7IDrip2ezo6aU89WXLhslTyB0XkDFRbl.jpg',
+                'description' => 'Jaket The North Face outdoor waterproof',
+                'stock' => 101,
+                'price' => 850000.00,
+                'weight' => 700,
+                'length' => 40,
+                'width' => 30,
+                'height' => 5,
+                'variants' => [],
+            ],
+            [
+                'id' => 29,
+                'name' => 'Tas Coklat',
+                'category' => 'Bags',
+                'image' => 'products/htNA5swNtrpJT9UXmZrcibIZzJIGX10EF7Jhpwks.jpg',
+                'description' => 'Tas bahu bahan kulit sintetis warna coklat',
+                'stock' => 100,
+                'price' => 250000.00,
+                'weight' => 450,
+                'length' => 35,
+                'width' => 25,
+                'height' => 10,
+                'variants' => [],
+            ],
+            [
+                'id' => 30,
+                'name' => 'Jas Hitam',
+                'category' => 'Formal Wear',
+                'image' => 'products/Q4c1RfIgfiIEZI0HTeQhgbie0mxiXwujuRhHs8zX.jpg',
+                'description' => 'Jas formal pria warna hitam executive',
+                'stock' => 100,
+                'price' => 500000.00,
+                'weight' => 800,
+                'length' => 45,
+                'width' => 35,
+                'height' => 5,
+                'variants' => [],
+            ],
+            [
+                'id' => 31,
+                'name' => 'Sepatu Nike Merah',
+                'category' => 'Footwear',
+                'image' => 'products/SZIXgjMhAMTxU34ajEJUNd2HSVcR8zrmNSxJ7poh.jpg',
+                'description' => 'Sepatu sneakers Nike edisi khusus warna merah',
+                'stock' => 1002,
+                'price' => 950000.00,
+                'weight' => 850,
+                'length' => 32,
+                'width' => 22,
+                'height' => 14,
+                'variants' => [],
+            ],
+            [
+                'id' => 32,
+                'name' => 'Jaket Kulit Hitam',
+                'category' => 'Outerwear',
+                'image' => 'products/H1PpCwgLIpbSgkHhWGq8D7s9XIXGTbJCwxwPtPQS.jpg',
+                'description' => 'Jaket kulit asli warna hitam pria',
+                'stock' => 100,
+                'price' => 500000.00,
+                'weight' => 900,
+                'length' => 42,
+                'width' => 32,
+                'height' => 6,
+                'variants' => [],
+            ],
         ];
 
         $createdProducts = [];
         foreach ($products as $p) {
-            $product = Product::create([
-                'name' => $p['name'],
-                'category' => $p['category'],
-                'description' => $p['description'],
-                'price' => $p['price'],
-                'stock' => $p['stock'],
-                'image' => null,
-                'weight' => $p['weight'] ?? 300,
-                'length' => $p['length'] ?? 40,
-                'width' => $p['width'] ?? 30,
-                'height' => $p['height'] ?? 20,
-            ]);
+            $product = Product::updateOrCreate(
+                ['id' => $p['id']],
+                [
+                    'name' => $p['name'],
+                    'category' => $p['category'],
+                    'description' => $p['description'],
+                    'price' => $p['price'],
+                    'stock' => $p['stock'],
+                    'image' => $p['image'],
+                    'weight' => $p['weight'] ?? 300,
+                    'length' => $p['length'] ?? 40,
+                    'width' => $p['width'] ?? 30,
+                    'height' => $p['height'] ?? 20,
+                ]
+            );
 
             foreach ($p['variants'] as $v) {
-                ProductVariant::create([
+                ProductVariant::firstOrCreate([
                     'product_id' => $product->id,
                     'name' => $v[0],
+                ], [
                     'stock' => $v[1],
                     'price' => $v[2],
                 ]);
@@ -112,13 +306,57 @@ class DatabaseSeeder extends Seeder
             $createdProducts[] = $product;
         }
 
-        // ---- Featured products (reference existing products only) ----
-        foreach ($createdProducts as $index => $product) {
-            if ($index >= 4) {
-                break;
+        // ---- Featured products (from algonation.sql) ----
+        $featuredProductIds = [31, 30, 28, 23, 29, 22];
+        foreach ($featuredProductIds as $pId) {
+            if (Product::where('id', $pId)->exists()) {
+                FeaturedProduct::firstOrCreate(
+                    ['product_id' => $pId]
+                );
             }
+        }
 
-            FeaturedProduct::firstOrCreate(['product_id' => $product->id]);
+        // ---- Flash Sales (from algonation.sql) ----
+        $flashSales = [
+            [
+                'product_id' => 31,
+                'normal_price' => 950000.00,
+                'sale_price' => 499999.99,
+                'discount_percentage' => 47.37,
+                'stock' => 6,
+                'start_at' => '2026-09-03 14:13:00',
+                'end_at' => '2026-10-15 17:15:00',
+                'status' => 'active',
+            ],
+            [
+                'product_id' => 24,
+                'normal_price' => 1890000.00,
+                'sale_price' => 1000000.00,
+                'discount_percentage' => 47.09,
+                'stock' => 7,
+                'start_at' => '2026-09-03 14:13:00',
+                'end_at' => '2026-10-15 17:15:00',
+                'status' => 'active',
+            ],
+            [
+                'product_id' => 19,
+                'normal_price' => 500000.00,
+                'sale_price' => 200000.00,
+                'discount_percentage' => 60.00,
+                'stock' => 5,
+                'start_at' => '2026-09-08 19:52:00',
+                'end_at' => '2026-10-15 19:52:00',
+                'status' => 'active',
+            ],
+        ];
+
+        foreach ($flashSales as $fs) {
+            if (Product::where('id', $fs['product_id'])->exists()) {
+                \App\Models\FlashSale::updateOrCreate(
+                    ['product_id' => $fs['product_id']],
+                    $fs
+                );
+            }
         }
 
         // ---- Transactions ----

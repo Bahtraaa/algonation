@@ -35,11 +35,14 @@ class ShippingSeeder extends Seeder
         // ---- Domestic zones (distance in km) ----
         $zones = [
             ['name' => 'Zona 1',            'min_distance_km' => 0,     'max_distance_km' => 10,    'rate_per_kg' => 10000,  'min_charge' => 10000,  'active' => true],
-            ['name' => 'Zona 2',            'min_distance_km' => 11,    'max_distance_km' => 50,    'rate_per_kg' => 12000,  'min_charge' => 12000,  'active' => true],
-            ['name' => 'Zona 3',            'min_distance_km' => 51,    'max_distance_km' => 150,   'rate_per_kg' => 15000,  'min_charge' => 15000,  'active' => true],
-            ['name' => 'Zona 4',            'min_distance_km' => 151,   'max_distance_km' => 500,   'rate_per_kg' => 18000,  'min_charge' => 18000,  'active' => true],
-            ['name' => 'Zona 5',            'min_distance_km' => 501,   'max_distance_km' => 1500,  'rate_per_kg' => 22000,  'min_charge' => 22000,  'active' => true],
-            ['name' => 'Zona 6',            'min_distance_km' => 1501,  'max_distance_km' => null,  'rate_per_kg' => 25000,  'min_charge' => 25000,  'active' => true],
+            ['name' => 'Zona 2',            'min_distance_km' => 11,    'max_distance_km' => 20,    'rate_per_kg' => 12000,  'min_charge' => 12000,  'active' => true],
+            ['name' => 'Zona 3',            'min_distance_km' => 21,    'max_distance_km' => 30,   'rate_per_kg' => 15000,  'min_charge' => 15000,  'active' => true],
+            ['name' => 'Zona 4',            'min_distance_km' => 31,   'max_distance_km' => 100,   'rate_per_kg' => 18000,  'min_charge' => 18000,  'active' => true],
+            ['name' => 'Zona 5',            'min_distance_km' => 101,   'max_distance_km' => 200,  'rate_per_kg' => 22000,  'min_charge' => 22000,  'active' => true],
+            ['name' => 'Zona 6',            'min_distance_km' => 201,  'max_distance_km' => 500,  'rate_per_kg' => 25000,  'min_charge' => 25000,  'active' => true],
+            ['name' => 'Zona 7',            'min_distance_km' => 501,  'max_distance_km' => 700, 'rate_per_kg' => 30000,  'min_charge' => 30000,  'active' => true],
+            ['name' => 'Zona 8',            'min_distance_km' => 701,  'max_distance_km' => 1060, 'rate_per_kg' => 35000,  'min_charge' => 35000,  'active' => true],
+            ['name' => 'Zona 9',            'min_distance_km' => 1061,  'max_distance_km' => null, 'rate_per_kg' => 100000,  'min_charge' => 60000,  'active' => true],
         ];
 
         foreach ($zones as $zone) {
