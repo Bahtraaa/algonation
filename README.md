@@ -771,6 +771,23 @@ ALGO NATION menggunakan sistem autentikasi berbasis **session** (file driver) de
 | `user` | Customer biasa, dapat berbelanja dan mengelola profil |
 | `admin` | Administrator, dapat mengakses panel admin |
 
+### Akun Demo
+
+Jalankan seeder terlebih dahulu agar akun demo berikut tersedia:
+
+```bash
+php artisan db:seed
+```
+
+Gunakan halaman login yang sama di `/login`.
+
+| Akun | Email | Password | Setelah login |
+|---|---|---|---|
+| Admin | `adminalgo@gmail.com` | `sCvagg*0` | Dashboard admin (`/admin`) |
+| User | `usernamealgo@gmail.com` | `kHabdj%88` | Halaman shop (`/shop`) |
+
+> **Catatan keamanan:** akun dan password di atas hanya untuk development/demo. Ganti atau hapus kredensial tersebut sebelum deployment ke production.
+
 ### Alur Authentication
 
 ```text
