@@ -53,11 +53,16 @@ class ShippingSeeder extends Seeder
         }
 
         // ---- International regions ----
+        // rate_per_kg region = tarif fallback "negara lainnya" di region tsb.
         $regions = [
-            ['name' => 'Asia',                 'rate_per_kg' => 150000, 'min_charge' => 100000],
-            ['name' => 'Asia Tenggara',        'rate_per_kg' => 90000,  'min_charge' => 75000],
-            ['name' => 'Eropa',                'rate_per_kg' => 250000, 'min_charge' => 200000],
-            ['name' => 'Amerika Utara',        'rate_per_kg' => 300000, 'min_charge' => 250000],
+            ['name' => 'Asia Tenggara',             'rate_per_kg' => 450000,  'min_charge' => 450000],
+            ['name' => 'Asia',                      'rate_per_kg' => 900000,  'min_charge' => 900000],
+            ['name' => 'Australia & Selandia Baru', 'rate_per_kg' => 750000,  'min_charge' => 750000],
+            ['name' => 'Eropa',                     'rate_per_kg' => 1300000, 'min_charge' => 1300000],
+            ['name' => 'Amerika Utara',             'rate_per_kg' => 1300000, 'min_charge' => 1300000],
+            ['name' => 'Amerika Selatan',           'rate_per_kg' => 1400000, 'min_charge' => 1400000],
+            ['name' => 'Timur Tengah',              'rate_per_kg' => 1150000, 'min_charge' => 1150000],
+            ['name' => 'Afrika',                    'rate_per_kg' => 1350000, 'min_charge' => 1350000],
         ];
 
         foreach ($regions as $region) {
@@ -68,20 +73,56 @@ class ShippingSeeder extends Seeder
         }
 
         // ---- International destination countries ----
+        // Tarif = harga ongkir yang dibayar customer untuk setiap 1 KG.
+        // min_charge disamakan dengan rate (minimum tagihan 1 KG).
         $asiaTenggara  = InternationalRegion::query()->where('name', 'Asia Tenggara')->first();
         $asia          = InternationalRegion::query()->where('name', 'Asia')->first();
+        $oseania       = InternationalRegion::query()->where('name', 'Australia & Selandia Baru')->first();
         $eropa         = InternationalRegion::query()->where('name', 'Eropa')->first();
         $amerikaUtara  = InternationalRegion::query()->where('name', 'Amerika Utara')->first();
+        $amerikaSelatan = InternationalRegion::query()->where('name', 'Amerika Selatan')->first();
+        $timurTengah   = InternationalRegion::query()->where('name', 'Timur Tengah')->first();
+        $afrika        = InternationalRegion::query()->where('name', 'Afrika')->first();
 
         $countries = [
-            ['country' => 'Singapura', 'region_id' => $asiaTenggara?->id, 'rate_per_kg' => 90000,  'min_charge' => 75000, 'active' => true],
-            ['country' => 'Malaysia',  'region_id' => $asiaTenggara?->id, 'rate_per_kg' => 95000,  'min_charge' => 75000, 'active' => true],
-            ['country' => 'Thailand',  'region_id' => $asiaTenggara?->id, 'rate_per_kg' => 110000, 'min_charge' => 90000, 'active' => true],
-            ['country' => 'Jepang',    'region_id' => $asia?->id,         'rate_per_kg' => 180000, 'min_charge' => 150000, 'active' => true],
-            ['country' => 'Korea Selatan', 'region_id' => $asia?->id,     'rate_per_kg' => 180000, 'min_charge' => 150000, 'active' => true],
-            ['country' => 'Belanda',   'region_id' => $eropa?->id,        'rate_per_kg' => 250000, 'min_charge' => 200000, 'active' => true],
-            ['country' => 'Inggris',   'region_id' => $eropa?->id,        'rate_per_kg' => 280000, 'min_charge' => 220000, 'active' => true],
-            ['country' => 'Amerika Serikat', 'region_id' => $amerikaUtara?->id, 'rate_per_kg' => 900000, 'min_charge' => 710000.00, 'active' => true],
+            // Asia Tenggara
+            ['country' => 'Malaysia',  'region_id' => $asiaTenggara?->id, 'rate_per_kg' => 470000,  'min_charge' => 470000,  'active' => true],
+            ['country' => 'Singapura', 'region_id' => $asiaTenggara?->id, 'rate_per_kg' => 450000,  'min_charge' => 450000,  'active' => true],
+            ['country' => 'Brunei',    'region_id' => $asiaTenggara?->id, 'rate_per_kg' => 500000,  'min_charge' => 500000,  'active' => true],
+            ['country' => 'Thailand',  'region_id' => $asiaTenggara?->id, 'rate_per_kg' => 600000,  'min_charge' => 600000,  'active' => true],
+            ['country' => 'Filipina',  'region_id' => $asiaTenggara?->id, 'rate_per_kg' => 630000,  'min_charge' => 630000,  'active' => true],
+            ['country' => 'Vietnam',   'region_id' => $asiaTenggara?->id, 'rate_per_kg' => 640000,  'min_charge' => 640000,  'active' => true],
+            // Asia di luar Asia Tenggara
+            ['country' => 'Jepang',        'region_id' => $asia?->id, 'rate_per_kg' => 900000, 'min_charge' => 900000, 'active' => true],
+            ['country' => 'Korea Selatan', 'region_id' => $asia?->id, 'rate_per_kg' => 900000, 'min_charge' => 900000, 'active' => true],
+            ['country' => 'China',         'region_id' => $asia?->id, 'rate_per_kg' => 900000, 'min_charge' => 900000, 'active' => true],
+            ['country' => 'Taiwan',        'region_id' => $asia?->id, 'rate_per_kg' => 900000, 'min_charge' => 900000, 'active' => true],
+            ['country' => 'Hong Kong',     'region_id' => $asia?->id, 'rate_per_kg' => 900000, 'min_charge' => 900000, 'active' => true],
+            // Australia & Selandia Baru
+            ['country' => 'Australia',     'region_id' => $oseania?->id, 'rate_per_kg' => 750000, 'min_charge' => 750000, 'active' => true],
+            ['country' => 'Selandia Baru', 'region_id' => $oseania?->id, 'rate_per_kg' => 750000, 'min_charge' => 750000, 'active' => true],
+            // Eropa (negara Eropa lainnya ikut tarif fallback region: 1.300.000)
+            ['country' => 'Inggris', 'region_id' => $eropa?->id, 'rate_per_kg' => 1200000, 'min_charge' => 1200000, 'active' => true],
+            ['country' => 'Jerman',  'region_id' => $eropa?->id, 'rate_per_kg' => 1200000, 'min_charge' => 1200000, 'active' => true],
+            ['country' => 'Prancis', 'region_id' => $eropa?->id, 'rate_per_kg' => 1200000, 'min_charge' => 1200000, 'active' => true],
+            ['country' => 'Belanda', 'region_id' => $eropa?->id, 'rate_per_kg' => 1200000, 'min_charge' => 1200000, 'active' => true],
+            ['country' => 'Italia',  'region_id' => $eropa?->id, 'rate_per_kg' => 1250000, 'min_charge' => 1250000, 'active' => true],
+            ['country' => 'Spanyol', 'region_id' => $eropa?->id, 'rate_per_kg' => 1250000, 'min_charge' => 1250000, 'active' => true],
+            // Amerika Utara
+            ['country' => 'Amerika Serikat', 'region_id' => $amerikaUtara?->id, 'rate_per_kg' => 1300000, 'min_charge' => 1300000, 'active' => true],
+            ['country' => 'Kanada',          'region_id' => $amerikaUtara?->id, 'rate_per_kg' => 1350000, 'min_charge' => 1350000, 'active' => true],
+            // Amerika Selatan
+            ['country' => 'Brasil',    'region_id' => $amerikaSelatan?->id, 'rate_per_kg' => 1450000, 'min_charge' => 1450000, 'active' => true],
+            ['country' => 'Argentina', 'region_id' => $amerikaSelatan?->id, 'rate_per_kg' => 1500000, 'min_charge' => 1500000, 'active' => true],
+            ['country' => 'Chile',     'region_id' => $amerikaSelatan?->id, 'rate_per_kg' => 1400000, 'min_charge' => 1400000, 'active' => true],
+            // Timur Tengah
+            ['country' => 'Uni Emirat Arab', 'region_id' => $timurTengah?->id, 'rate_per_kg' => 1150000, 'min_charge' => 1150000, 'active' => true],
+            ['country' => 'Arab Saudi',      'region_id' => $timurTengah?->id, 'rate_per_kg' => 1150000, 'min_charge' => 1150000, 'active' => true],
+            ['country' => 'Qatar',           'region_id' => $timurTengah?->id, 'rate_per_kg' => 1200000, 'min_charge' => 1200000, 'active' => true],
+            ['country' => 'Kuwait',          'region_id' => $timurTengah?->id, 'rate_per_kg' => 1200000, 'min_charge' => 1200000, 'active' => true],
+            // Afrika
+            ['country' => 'Afrika Selatan', 'region_id' => $afrika?->id, 'rate_per_kg' => 1350000, 'min_charge' => 1350000, 'active' => true],
+            ['country' => 'Mesir',          'region_id' => $afrika?->id, 'rate_per_kg' => 1350000, 'min_charge' => 1350000, 'active' => true],
         ];
 
         foreach ($countries as $country) {

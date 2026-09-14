@@ -171,6 +171,7 @@ ALGO-NATION/
 │   ├── Mail/
 │   │   └── ResetPasswordMail.php
 │   ├── Models/
+│   │   ├── Address.php
 │   │   ├── FeaturedProduct.php
 │   │   ├── FlashSale.php
 │   │   ├── InternationalRegion.php
@@ -266,11 +267,11 @@ ALGO-NATION/
 | `app/Http/Controllers/Admin/` | Controller admin (9 file) |
 | `app/Http/Controllers/` | Controller publik dan auth (6 file + `Auth/` 2 file) |
 | `app/Mail/` | Mailable Laravel (`ResetPasswordMail.php`) |
-| `app/Models/` | Model Eloquent (12 file) |
+| `app/Models/` | Model Eloquent (13 file) |
 | `app/Services/` | Service layer (5 file) |
 | `config/midtrans.php` | Konfigurasi custom Midtrans |
 | `config/services.php` | Konfigurasi WhatsApp CS, OSRM, Nominatim |
-| `database/migrations/` | 17 file migrasi database |
+| `database/migrations/` | 21 file migrasi database |
 | `database/seeders/` | Seeder data awal |
 | `resources/views/admin/` | Template halaman admin |
 | `resources/js/app.js` | Alpine.js stores, keranjang, countdown, Midtrans |
@@ -347,6 +348,26 @@ php artisan migrate
 ```bash
 php artisan db:seed
 ```
+
+Seeder mengisi **data referensi/master** yang diselaraskan dengan dump database
+produksi (`algonation (1).sql`):
+
+| Data | Jumlah | Keterangan |
+|---|---|---|
+| Users | 41 | Termasuk akun demo admin & user (lihat [Authentication](#10-authentication)) |
+| Products | 15 | Produk + status, harga, stok, berat, dimensi |
+| Product Variants | 1 | Varian SKU `TS-BLK-50CM` milik produk `Sepatu Nike` (id 31) |
+| Featured Products | 8 | Referensi produk unggulan |
+| Flash Sales | 3 | Flash sale aktif (produk id 31, 24, 19) |
+| Shipping Settings | 1 | Asal toko: Jakarta, Indonesia |
+| Shipping Zones | 9 | Zona domestik Zona 1 - Zona 9 |
+| International Regions | 8 | Asia Tenggara, Asia, Australia & Selandia Baru, Eropa, Amerika Utara, Amerika Selatan, Timur Tengah, Afrika |
+| Shipping Countries | 30 | Tarif per negara (lihat [Sistem Ongkir](#15-sistem-ongkir)) |
+| Shipping Couriers | 4 | JNE, J&T Express, POS Indonesia (domestik), DHL Express (internasional) |
+
+> **Catatan:** `transactions`, `transaction_details`, dan `addresses` **tidak**
+> di-seed. Data tersebut bersifat operasional (dibuat lewat alur checkout dan
+> halaman kelola alamat) dan berisi data milik user asli.
 
 ### 9. Buat Storage Symlink
 
@@ -520,8 +541,9 @@ BROADCAST_CONNECTION=log
 | Tabel | Fungsi |
 |---|---|
 | `users` | Data pengguna (customer dan admin) |
+| `addresses` | Alamat pengiriman tersimpan milik user |
 | `products` | Data produk utama |
-| `product_variants` | Varian produk (ukuran, warna, dll) |
+| `product_variants` | Varian produk (warna, ukuran, SKU, dll) |
 | `transactions` | Data pesanan/transaksi |
 | `transaction_details` | Detail item dalam pesanan |
 | `flash_sales` | Data flash sale |
@@ -531,6 +553,7 @@ BROADCAST_CONNECTION=log
 | `international_regions` | Region internasional (Asia, Eropa, dll) |
 | `shipping_countries` | Negara tujuan pengiriman internasional |
 | `shipping_couriers` | Daftar kurir pengiriman |
+| `migrations` | Tracking migrasi database yang sudah dijalankan |
 | `cache` | Cache application (termasuk token reset password & rate limit forgot password) |
 | `cache_locks` | Lock cache |
 | `jobs` | Antrian job |
@@ -558,6 +581,25 @@ BROADCAST_CONNECTION=log
 | `remember_token` | string, nullable | Token "ingat saya" |
 | `created_at` / `updated_at` | timestamps | Timestamp otomatis |
 
+#### `addresses`
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | bigint (PK) | Auto-increment |
+| `user_id` | foreignId | FK ke `users` (cascade delete) |
+| `label` | string, default `'Rumah'` | Label alamat (Rumah/Kantor/dll) |
+| `recipient_name` | string | Nama penerima |
+| `phone` | string(20) | Nomor telepon penerima |
+| `country` | string(120), default `'Indonesia'` | Negara |
+| `province` | string(120) | Provinsi |
+| `city` | string(120) | Kota |
+| `district` | string(120) | Kecamatan |
+| `postal_code` | string(10) | Kode pos |
+| `address` | text | Alamat lengkap |
+| `note` | string(500), nullable | Catatan alamat |
+| `is_default` | boolean, default false | Alamat utama user |
+| `created_at` / `updated_at` | timestamps | Timestamp otomatis |
+
 #### `products`
 
 | Kolom | Tipe | Keterangan |
@@ -565,6 +607,7 @@ BROADCAST_CONNECTION=log
 | `id` | bigint (PK) | Auto-increment |
 | `name` | string | Nama produk |
 | `category` | string, indexed | Kategori produk |
+| `status` | string, default `'active'` | Status: `active` atau `inactive` |
 | `image` | string, nullable | Path gambar produk |
 | `description` | text, nullable | Deskripsi produk |
 | `stock` | integer, default 0 | Stok utama |
@@ -584,8 +627,12 @@ BROADCAST_CONNECTION=log
 | `id` | bigint (PK) | Auto-increment |
 | `product_id` | foreignId | FK ke `products` (cascade delete) |
 | `name` | string | Nama varian |
+| `color` | string(50), nullable | Warna varian |
+| `size` | string(20), nullable | Ukuran varian |
+| `sku` | string(100), nullable | SKU varian |
 | `stock` | integer, default 0 | Stok varian |
 | `price` | decimal(12,2), nullable | Harga varian (fallback ke harga produk) |
+| `image` | string, nullable | Gambar varian |
 | `created_at` / `updated_at` | timestamps | Timestamp otomatis |
 
 #### `transactions`
@@ -594,12 +641,22 @@ BROADCAST_CONNECTION=log
 |---|---|---|
 | `id` | bigint (PK) | Auto-increment |
 | `user_id` | foreignId | FK ke `users` (cascade delete) |
+| `address_id` | foreignId, nullable | FK ke `addresses` (alamat terpilih saat checkout) |
 | `total_price` | decimal(12,2), default 0 | Total harga produk |
 | `shipping_cost` | decimal(12,2), default 0 | Biaya pengiriman |
 | `payment_method` | string, default `'midtrans'` | Metode pembayaran |
 | `midtrans_order_id` | string, nullable, unique | Order ID Midtrans |
 | `midtrans_snap_token` | string, nullable | Snap token Midtrans |
 | `shipping_address` | text | Alamat pengiriman |
+| `shipping_name` | string, nullable | Nama penerima (snapshot alamat) |
+| `shipping_phone` | string(20), nullable | Telepon penerima (snapshot alamat) |
+| `shipping_country` | string(120), nullable | Negara (snapshot alamat) |
+| `shipping_province` | string(120), nullable | Provinsi (snapshot alamat) |
+| `shipping_city` | string(120), nullable | Kota (snapshot alamat) |
+| `shipping_district` | string(120), nullable | Kecamatan (snapshot alamat) |
+| `shipping_postal_code` | string(10), nullable | Kode pos (snapshot alamat) |
+| `shipping_note` | string(500), nullable | Catatan pengiriman |
+| `shipping_label` | string(50), nullable | Label alamat (Rumah/Kantor) |
 | `shipping_type` | string, nullable | Tipe pengiriman (`domestic` / `international`) |
 | `origin_country` | string, nullable | Negara asal (snapshot) |
 | `destination_country` | string, nullable | Negara tujuan (snapshot) |
@@ -724,7 +781,9 @@ BROADCAST_CONNECTION=log
 
 ```mermaid
 erDiagram
+    USERS ||--o{ ADDRESSES : memiliki
     USERS ||--o{ TRANSACTIONS : membuat
+    ADDRESSES ||--o{ TRANSACTIONS : dipakai_checkout
     TRANSACTIONS ||--o{ TRANSACTION_DETAILS : memiliki
     PRODUCTS ||--o{ TRANSACTION_DETAILS : terdapat
     PRODUCTS ||--o{ PRODUCT_VARIANTS : memiliki
@@ -736,7 +795,9 @@ erDiagram
 
 **Relasi utama:**
 
+* `User` --> `Address` : Satu user bisa menyimpan banyak alamat (OneToMany)
 * `User` --> `Transaction` : Satu user bisa membuat banyak transaksi (OneToMany)
+* `Address` --> `Transaction` : Satu alamat bisa dipakai banyak checkout (OneToMany, via `address_id` + snapshot kolom `shipping_*`)
 * `Transaction` --> `TransactionDetail` : Satu transaksi memiliki banyak detail item (OneToMany)
 * `Product` --> `TransactionDetail` : Satu produk bisa ada di banyak detail transaksi (OneToMany)
 * `ProductVariant` --> `TransactionDetail` : Satu varian bisa ada di banyak detail transaksi (OneToMany)
@@ -1163,24 +1224,101 @@ Zona ditentukan berdasarkan jarak dari lokasi toko (Jakarta, -6.200000, 106.8166
 | Zona | Jarak | Tarif/kg | Biaya Minimum |
 |---|---|---|---|
 | Zona 1 | 0 - 10 km | 10.000 | 10.000 |
-| Zona 2 | 11 - 50 km | 12.000 | 12.000 |
-| Zona 3 | 51 - 150 km | 15.000 | 15.000 |
-| Zona 4 | 151 - 500 km | 18.000 | 18.000 |
-| Zona 5 | 501 - 1500 km | 22.000 | 22.000 |
-| Zona 6 | 1501+ km | 25.000 | 25.000 |
+| Zona 2 | 11 - 20 km | 12.000 | 12.000 |
+| Zona 3 | 21 - 30 km | 15.000 | 15.000 |
+| Zona 4 | 31 - 100 km | 18.000 | 18.000 |
+| Zona 5 | 101 - 200 km | 22.000 | 22.000 |
+| Zona 6 | 201 - 500 km | 25.000 | 25.000 |
+| Zona 7 | 501 - 700 km | 30.000 | 30.000 |
+| Zona 8 | 701 - 1060 km | 35.000 | 35.000 |
+| Zona 9 | 1061+ km (tanpa batas) | 150.000 | 60.000 |
 
 Batas jarak zona (`min_distance_km` / `max_distance_km`) disimpan sebagai **decimal(10,2)** sehingga mendukung pecahan km. Admin boleh memasukkan angka desimal dengan **koma** (contoh: `100,1`) atau **titik** (contoh: `100.1`); nilai otomatis dinormalisasi ke format dot sebelum disimpan. Kecocokan zona memakai perbandingan float langsung (bukan pembulatan integer `ceil`), jadi jarak `100,1 km` cocok dengan batas `100,1 km` secara presisi. Tampilan jarak (checkout & panel admin) juga **tidak pernah membulatkan ke atas**: nilai dipotong (truncate), misalnya jarak `100,16 km` ditampilkan sebagai `100,1 km`.
 
 ### Pengiriman Internasional
 
-| Region | Tarif/kg | Biaya Minimum |
-|---|---|---|
-| Asia | 35.000 | 50.000 |
-| Asia Tenggara | 30.000 | 45.000 |
-| Eropa | 55.000 | 80.000 |
-| Amerika Utara | 65.000 | 100.000 |
+Semua tarif di bawah adalah **harga ongkir yang dibayar customer untuk setiap
+1 KG** (`min_charge` disamakan dengan tarif, minimum tagihan 1 KG).
 
-Negara dapat memiliki tarif sendiri yang mengoverride tarif region.
+#### Asia Tenggara
+
+| Negara | Tarif/kg |
+|---|---|
+| Singapura | 450.000 |
+| Malaysia | 470.000 |
+| Brunei | 500.000 |
+| Thailand | 600.000 |
+| Filipina | 630.000 |
+| Vietnam | 640.000 |
+
+#### Asia (di luar Asia Tenggara)
+
+| Negara | Tarif/kg |
+|---|---|
+| Jepang | 900.000 |
+| Korea Selatan | 900.000 |
+| China | 900.000 |
+| Taiwan | 900.000 |
+| Hong Kong | 900.000 |
+
+#### Australia & Selandia Baru
+
+| Negara | Tarif/kg |
+|---|---|
+| Australia | 750.000 |
+| Selandia Baru | 750.000 |
+
+#### Eropa
+
+| Negara | Tarif/kg |
+|---|---|
+| Inggris | 1.200.000 |
+| Jerman | 1.200.000 |
+| Prancis | 1.200.000 |
+| Belanda | 1.200.000 |
+| Italia | 1.250.000 |
+| Spanyol | 1.250.000 |
+| Negara Eropa lainnya | 1.300.000 (tarif fallback region `Eropa`) |
+
+#### Amerika Utara
+
+| Negara | Tarif/kg |
+|---|---|
+| Amerika Serikat | 1.300.000 |
+| Kanada | 1.350.000 |
+
+#### Amerika Selatan
+
+| Negara | Tarif/kg |
+|---|---|
+| Chile | 1.400.000 |
+| Brasil | 1.450.000 |
+| Argentina | 1.500.000 |
+
+#### Timur Tengah
+
+| Negara | Tarif/kg |
+|---|---|
+| Uni Emirat Arab | 1.150.000 |
+| Arab Saudi | 1.150.000 |
+| Qatar | 1.200.000 |
+| Kuwait | 1.200.000 |
+
+#### Afrika
+
+| Negara | Tarif/kg |
+|---|---|
+| Afrika Selatan | 1.350.000 |
+| Mesir | 1.350.000 |
+
+Setiap negara memiliki tarif sendiri di tabel `shipping_countries` yang
+mengoverride tarif regionnya (`international_regions`). Tarif region dipakai
+sebagai fallback (`Eropa` = 1.300.000 untuk negara Eropa lainnya,
+`Asia` = 900.000, `Asia Tenggara` = 450.000,
+`Australia & Selandia Baru` = 750.000, `Amerika Utara` = 1.300.000,
+`Amerika Selatan` = 1.400.000, `Timur Tengah` = 1.150.000,
+`Afrika` = 1.350.000). Tujuan internasional yang negaranya belum terdaftar
+tidak bisa checkout (ongkir tidak dapat dihitung).
 
 ### Contoh Perhitungan
 
@@ -1191,8 +1329,8 @@ Tujuan: Bandung (jarak ~150 km dari Jakarta)
 Berat aktual  = 0.3 kg * 2 = 0.6 kg
 Volumetric    = (40 * 30 * 20) / 6000 * 2 = 8.0 kg
 Billable      = MAX(0.6, 8.0) = 8.0 kg
-Zona          = Zona 4 (151-500 km) -> rate 18.000/kg
-Ongkir        = MAX(8.0 * 18.000, 18.000) = 144.000
+Zona          = Zona 5 (101-200 km) -> rate 22.000/kg
+Ongkir        = MAX(8.0 * 22.000, 22.000) = 176.000
 ```
 
 ### Total Pembayaran
