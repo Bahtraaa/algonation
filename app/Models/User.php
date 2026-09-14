@@ -2,8 +2,7 @@
 
 namespace App\Models;
 
-use App\Notifications\ResetPasswordNotification;
-use Database\Factories\UserFactory;
+use Illuminate\Auth\Passwords\CanResetPassword;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -11,8 +10,8 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    /** @use HasFactory<\Database\Factories\UserFactory> */
+    use HasFactory, Notifiable, CanResetPassword;
 
     /**
      * The attributes that are mass assignable.
@@ -76,14 +75,6 @@ class User extends Authenticatable
     {
         return $this->isAdmin()
             && self::where('role', 'admin')->where('status', 'active')->count() <= 1;
-    }
-
-    /**
-     * Send the password reset notification.
-     */
-    public function sendPasswordResetNotification($token): void
-    {
-        $this->notify(new ResetPasswordNotification($token));
     }
 
     /**

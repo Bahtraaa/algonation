@@ -156,19 +156,18 @@ ALGO-NATION/
 │   │   │   │   ├── ShippingController.php
 │   │   │   │   ├── StockController.php
 │   │   │   │   └── UserController.php
+│   │   │   ├── Auth/
+│   │   │   │   ├── ForgotPasswordController.php
+│   │   │   │   └── ResetPasswordController.php
 │   │   │   ├── AuthController.php
 │   │   │   ├── CartController.php
 │   │   │   ├── CheckoutController.php
 │   │   │   ├── Controller.php
-│   │   │   ├── ForgotPasswordController.php
 │   │   │   ├── HomeController.php
 │   │   │   ├── ProfileController.php
-│   │   │   └── ResetPasswordController.php
 │   │   ├── Middleware/
 │   │   │   └── AdminMiddleware.php
 │   │   └── Requests/
-│   │       ├── ForgotPasswordRequest.php
-│   │       └── ResetPasswordRequest.php
 │   ├── Mail/
 │   │   └── ResetPasswordMail.php
 │   ├── Models/
@@ -184,10 +183,6 @@ ALGO-NATION/
 │   │   ├── Transaction.php
 │   │   ├── TransactionDetail.php
 │   │   └── User.php
-│   ├── Notifications/
-│   │   ├── Channels/
-│   │   │   └── MailtrapApiChannel.php
-│   │   └── ResetPasswordNotification.php
 │   ├── Providers/
 │   │   └── AppServiceProvider.php
 │   └── Services/
@@ -207,7 +202,6 @@ ALGO-NATION/
 │   ├── mail.php
 │   ├── midtrans.php
 │   ├── queue.php
-│   ├── security.php
 │   ├── services.php
 │   └── session.php
 ├── database/
@@ -236,6 +230,10 @@ ALGO-NATION/
 │       ├── partials/
 │       ├── components/
 │       ├── auth/
+│       │   ├── forgot-password.blade.php
+│       │   ├── login.blade.php
+│       │   ├── register.blade.php
+│       │   └── reset-password.blade.php
 │       ├── admin/
 │       ├── products/
 │       ├── checkout/
@@ -266,11 +264,11 @@ ALGO-NATION/
 | Folder | Fungsi |
 |---|---|
 | `app/Http/Controllers/Admin/` | Controller admin (9 file) |
-| `app/Http/Controllers/` | Controller publik dan auth (8 file) |
+| `app/Http/Controllers/` | Controller publik dan auth (6 file + `Auth/` 2 file) |
+| `app/Mail/` | Mailable Laravel (`ResetPasswordMail.php`) |
 | `app/Models/` | Model Eloquent (12 file) |
 | `app/Services/` | Service layer (5 file) |
 | `config/midtrans.php` | Konfigurasi custom Midtrans |
-| `config/security.php` | Konfigurasi rate limit reset password |
 | `config/services.php` | Konfigurasi WhatsApp CS, OSRM, Nominatim |
 | `database/migrations/` | 17 file migrasi database |
 | `database/seeders/` | Seeder data awal |
@@ -411,23 +409,34 @@ SESSION_PATH=/
 SESSION_DOMAIN=
 ```
 
-### Email Reset Password
+### Email Reset Password (SMTP Resend)
 
-Reset password dikirim melalui Mailtrap Send API menggunakan channel aplikasi
-`App\Notifications\Channels\MailtrapApiChannel`. Gunakan kredensial Mailtrap
-melalui environment variable dan jangan commit nilai aslinya ke repository.
+Reset password dikirim melalui **Laravel Mail / Mailable** (`App\Mail\ResetPasswordMail`)
+menggunakan **SMTP Resend** (`config/mail.php` mailer `smtp`). Kredensial hanya
+berada di `.env` dan tidak pernah di-hardcode di kode maupun di-commit ke repository.
 
 ```env
-MAIL_MAILER=mailtrap-sdk
-MAILTRAP_HOST=send.api.mailtrap.io
-MAILTRAP_API_KEY=your-mailtrap-api-token
-MAIL_FROM_ADDRESS=sender@domain-terverifikasi.example
-MAIL_FROM_NAME="ALGO NATION"
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.resend.com
+MAIL_PORT=587
+MAIL_USERNAME=resend
+MAIL_PASSWORD=re_xxxxxxxxx
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS=onboarding@resend.dev
+MAIL_FROM_NAME="Acme"
 ```
 
-Mailtrap demo domain hanya dapat mengirim email ke alamat pemilik akun Mailtrap.
-Untuk mengirim ke alamat pengguna lain, verifikasi domain pengirim di Mailtrap
-dan gunakan alamat dari domain tersebut pada `MAIL_FROM_ADDRESS`.
+Pengiriman dilakukan dengan pola:
+
+```php
+use Illuminate\Support\Facades\Mail;
+
+Mail::to($user->email)->send(new ResetPasswordMail($user, $resetUrl));
+```
+
+Tidak menggunakan Mailtrap, Resend Email API langsung, maupun Java SDK.
+Tidak ada tabel database baru untuk fitur ini: token reset dan rate limit
+disimpan di **Cache** (`CACHE_STORE=database`, tabel `cache` yang sudah ada).
 
 Setelah mengubah `.env`, bersihkan konfigurasi:
 
@@ -477,29 +486,6 @@ SHIPPING_GEOCODING_ENDPOINT=https://nominatim.openstreetmap.org
 | `SHIPPING_ROUTING_MODE` | Mode routing (`driving`) |
 | `SHIPPING_GEOCODING_ENDPOINT` | Endpoint Nominatim untuk geocoding alamat |
 
-### Lupa Password / Password Reset
-
-```env
-PASSWORD_RESET_MAX_ATTEMPTS=4
-PASSWORD_RESET_DECAY_MINUTES=1
-PASSWORD_RESET_BLOCK_MINUTES=30
-PASSWORD_RESET_MAX_ATTEMPTS_PER_IP=20
-```
-
-| Variable | Keterangan |
-|---|---|
-| `PASSWORD_RESET_MAX_ATTEMPTS` | Batas permintaan link reset per kombinasi IP + email dalam periode `DECAY_MINUTES` |
-| `PASSWORD_RESET_DECAY_MINUTES` | Jendela waktu (menit) untuk aturan di atas |
-| `PASSWORD_RESET_BLOCK_MINUTES` | Durasi pemblokiran (menit) setelah melewati batas |
-| `PASSWORD_RESET_MAX_ATTEMPTS_PER_IP` | Batas permintaan link reset per alamat IP dalam periode yang sama |
-
-Perilaku keamanan:
-
-- **Anti-enumeration**: respons identik untuk email terdaftar maupun tidak, tanpa membedakan lewat status, pesan, atau token.
-- **Rate limiting konfigurabel**: enforcer di `ForgotPasswordController` memakai `config/security.php` (nilai via `.env` di atas); setelah melewati batas `MAX_ATTEMPTS` per kombinasi IP + email (atau `MAX_ATTEMPTS_PER_IP` per IP) dalam 1 menit, kombos tersebut **diblokir selama `BLOCK_MINUTES`** (default 30 menit) — mengembalikan **HTTP 429** dengan `retry_after` (JSON, dipakai UI countdown Alpine) atau redirect dengan error saat non-JSON.
-- **Halaman state reset**: token tidak valid menampilkan halaman "Link Tidak Valid", token kedaluwarsa menampilkan halaman "Link Reset Kedaluwarsa" (tanpa form).
-- **Token sekali pakai**: setelah sukses, baris token dihapus dan seluruh sesi lama akun diinvalidasi.
-
 ### Cache & Queue
 
 ```env
@@ -545,12 +531,15 @@ BROADCAST_CONNECTION=log
 | `international_regions` | Region internasional (Asia, Eropa, dll) |
 | `shipping_countries` | Negara tujuan pengiriman internasional |
 | `shipping_couriers` | Daftar kurir pengiriman |
-| `cache` | Cache application |
+| `cache` | Cache application (termasuk token reset password & rate limit forgot password) |
 | `cache_locks` | Lock cache |
 | `jobs` | Antrian job |
 | `job_batches` | Batch job |
 | `failed_jobs` | Job yang gagal |
-| `password_reset_tokens` | Token reset password |
+
+> Fitur lupa password **tidak membuat tabel baru**. Token reset (`password-reset:{sha256(token)}`,
+> TTL 30 menit, sekali pakai) dan rate limit (`forgot-password:{email}` / `forgot-password:ip:{ip}`)
+> disimpan di Cache. Password baru langsung disimpan ke `users.password` (hash).
 
 ### Struktur Tabel Utama
 
@@ -863,6 +852,62 @@ Hapus Session
     v
 Redirect ke halaman utama
 ```
+
+### Lupa Password / Reset Password
+
+Alur (`guest` middleware, CSRF aktif):
+
+```text
+Login Page --> "Forgot Password?" --> /forgot-password
+    |
+    v
+Input Email --> Validasi --> Normalisasi (lowercase + trim)
+    |
+    v
+Cek blokir email 30 menit --> Jika diblokir: TOLAK
+    |
+    v
+Cek blokir IP --> Jika diblokir: TOLAK
+    |
+    v
+Cek window 1 menit --> Jika >= 2 sukses: TOLAK + blokir email 30 menit
+    |
+    v
+Buat token (random_bytes 32, disimpan sebagai SHA-256 di Cache, TTL 30 menit)
+    |
+    v
+Kirim email via Mail::to()->send(new ResetPasswordMail) (SMTP Resend)
+    |
+    +--> Gagal --> hapus token, tanpa catat, tanpa blokir
+    |
+    +--> Berhasil --> catat request --> respons umum:
+         "Jika email tersebut terdaftar, link reset password akan dikirim ke email tersebut."
+    |
+    v
+User buka /reset-password/{token}?email=... --> input password baru + konfirmasi
+    |
+    v
+Validasi token (valid, belum expired, belum dipakai) --> Hash::make --> users.password
+    |
+    v
+Token dihapus (sekali pakai) --> redirect /login:
+"Password berhasil diubah. Silakan login menggunakan password baru."
+```
+
+**Rate limit (backend, Cache, tanpa tabel baru):**
+
+| Aturan | Nilai |
+|---|---|
+| Maksimal email reset berhasil per email | 2 dalam 60 detik (sliding window) |
+| Request ke-3 dalam window | Ditolak, tanpa token, tanpa email, blokir email 30 menit |
+| Selama blokir | Semua request email tersebut ditolak; counter tidak bertambah; blokir tidak diperpanjang |
+| Setelah 30 menit | Blokir berakhir otomatis, limit kembali 2/menit |
+| Proteksi IP tambahan | Maks 10 email berhasil/menit/IP, blokir IP 10 menit (tidak menggantikan limit email; ganti IP tidak melewati limit email) |
+| SMTP gagal / email tak terdaftar | Tidak dicatat sebagai request berhasil |
+| Pesan blokir | `Terlalu banyak permintaan reset password. Silakan coba lagi setelah 30 menit.` |
+
+Keamanan: respons umum untuk email tak terdaftar (anti-enumeration), token tidak
+di-log dan tidak ditampilkan, password selalu di-hash, kredensial SMTP hanya di `.env`.
 
 ---
 
@@ -1563,6 +1608,18 @@ Admin --> Login (/login) --> Admin Dashboard
 * Username dan email unik.
 * Password minimum 8 karakter.
 
+### Forgot Password
+
+* Email wajib diisi dan berformat email (maks 255 karakter).
+* Rate limit: maks 2 email berhasil/menit/email, blokir 30 menit setelah pelanggaran.
+* Request hanya dicatat setelah `Mail::send()` berhasil.
+
+### Reset Password
+
+* Email wajib dan harus cocok dengan pemilik token.
+* Password wajib, minimum 8 karakter, `password_confirmation` harus sama.
+* Token harus valid, belum kedaluwarsa (30 menit), dan belum dipakai (sekali pakai).
+
 ### Produk (Admin)
 
 * Name, category wajib diisi.
@@ -1646,10 +1703,18 @@ tests/
 └── TestCase.php
 ```
 
-Testing menggunakan SQLite in-memory database.
+Testing menggunakan SQLite in-memory database (`DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`),
+Cache array, dan Mail array/fake sehingga tidak mengirim email asli.
 
-Test fitur reset password mencakup pembuatan token, pengiriman notification,
-rate limiting, validasi link, kedaluwarsa token, dan penggunaan token sekali.
+Test fitur reset password (`tests/Feature/ForgotPasswordTest.php`, 17 skenario) mencakup:
+request pertama/kedua tercatat setelah email terkirim, request ketiga ditolak +
+blokir 30 menit tanpa SMTP/token baru, penolakan selama blokir, pembukaan blokir
+otomatis setelah 30 menit, SMTP gagal tidak dihitung (request berikutnya tetap
+dianggap pertama), token kedaluwarsa ditolak, token sekali pakai, password
+tersimpan hash di `users.password` + token invalid, anti-enumeration email tak
+terdaftar, normalisasi kapitalisasi email, sliding window 60 detik, ganti IP
+tidak melewati limit email, batas IP lintas-email, serta blokir yang tidak
+diperpanjang oleh retry.
 
 ---
 
@@ -1674,10 +1739,13 @@ Periksa: `MIDTRANS_SERVER_KEY`, `MIDTRANS_CLIENT_KEY`, `MIDTRANS_IS_PRODUCTION`.
 
 ### Email Reset Password Tidak Terkirim
 
-Periksa `MAILTRAP_API_KEY`, `MAILTRAP_HOST`, dan `MAIL_FROM_ADDRESS`. Jika muncul
-pesan `Demo domains can only be used to send emails to account owners`, gunakan
-alamat pemilik akun Mailtrap untuk testing atau verifikasi domain pengirim.
+Periksa konfigurasi SMTP Resend di `.env`: `MAIL_MAILER=smtp`,
+`MAIL_HOST=smtp.resend.com`, `MAIL_PORT=587`, `MAIL_USERNAME=resend`,
+`MAIL_PASSWORD` (API key Resend diawali `re_`), `MAIL_ENCRYPTION=tls`,
+`MAIL_FROM_ADDRESS`, `MAIL_FROM_NAME`. Jangan menulis kredensial langsung di
+controller — semua dibaca dari `config/mail.php` via `env()`.
 Pastikan juga konfigurasi sudah dibersihkan dengan `php artisan config:clear`.
+Untuk testing otomatis, suite memakai Mail fake sehingga tidak butuh SMTP asli.
 
 ### Gambar Produk Tidak Muncul
 
@@ -1777,6 +1845,9 @@ APP_ENV=production | APP_DEBUG=false | Midtrans Production | Session/Cache Redis
 8. **Admin middleware harus selalu digunakan.**
 9. **Snapshot data pengiriman.** Data ongkir di-snapshot saat checkout agar tidak berubah.
 10. **Terminal state.** Status `expired`, `cancelled`, `failed` adalah state akhir.
+11. **Forgot password tanpa tabel baru.** Token dan rate limit hanya di Cache; password baru langsung ke `users.password` (hash).
+12. **Kredensial email hanya di `.env`.** Jangan hardcode SMTP/API key di kode dan jangan commit `.env`.
+13. **Jangan log data sensitif.** Token reset, password, dan kredensial SMTP tidak boleh masuk log.
 
 ---
 

@@ -12,10 +12,8 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
-use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\ResetPasswordController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -47,29 +45,16 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->name('login.attempt');
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.store');
-
-    Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])
-        ->name('password.request');
-    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])
-        ->name('password.email');
-
-    Route::get('/reset-password/{token}', [ResetPasswordController::class, 'showResetForm'])
-        ->name('password.reset');
-    Route::post('/reset-password', [ResetPasswordController::class, 'reset'])
-        ->name('password.update');
+    Route::get('/forgot-password', [App\Http\Controllers\Auth\ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
+    Route::post('/forgot-password', [App\Http\Controllers\Auth\ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
+    Route::get('/reset-password/{token}', [App\Http\Controllers\Auth\ResetPasswordController::class, 'showResetForm'])->name('password.reset');
+    Route::post('/reset-password/{token}', [App\Http\Controllers\Auth\ResetPasswordController::class, 'reset'])->name('password.update');
 });
 
-Route::post('/logout', [AuthController::class, 'logout'])
-    ->middleware('auth')
-    ->name('logout');
-
-/*
-|--------------------------------------------------------------------------
-| Customer (Authenticated) Routes
-|--------------------------------------------------------------------------
-*/
-
 Route::middleware('auth')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+});
+
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
@@ -85,7 +70,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/orders/{transaction}/check-status', [CheckoutController::class, 'checkStatus'])->name('orders.check-status');
     Route::post('/orders/{transaction}/finalize', [CheckoutController::class, 'finalize'])->name('orders.finalize');
     Route::delete('/orders/{transaction}/cancel', [CheckoutController::class, 'cancel'])->name('orders.cancel');
-});
 
 /*
 |--------------------------------------------------------------------------

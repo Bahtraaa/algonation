@@ -54,6 +54,7 @@ it('only allows cancellation before the package is handed to the courier', funct
 });
 
 it('rejects a cancellation request after the package is handed to the courier', function () {
+    /** @var \Tests\TestCase $this */
     $user = User::factory()->create();
     $transaction = Transaction::create([
         'user_id' => $user->id,
