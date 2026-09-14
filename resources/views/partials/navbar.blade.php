@@ -71,6 +71,7 @@
                             {{-- Clicking any link closes the dropdown --}}
                             <div class="p-2" @click="accountOpen = false">
                                 <a href="{{ route('profile') }}" class="nav-link">Profil Saya</a>
+                                <a href="{{ route('addresses.index') }}" class="nav-link">Alamat Saya</a>
                                 <a href="{{ route('orders') }}" class="nav-link">Riwayat Pesanan</a>
                                 @if (auth()->user()->isAdmin())
                                     <a href="{{ route('admin.dashboard') }}" class="nav-link">Admin Panel</a>
@@ -116,6 +117,7 @@
                         <a href="{{ route('admin.dashboard') }}" class="nav-link">Admin Panel</a>
                     @endif
                     <a href="{{ route('profile') }}" class="nav-link">Profil</a>
+                    <a href="{{ route('addresses.index') }}" class="nav-link">Alamat Saya</a>
                     <a href="{{ route('orders') }}" class="nav-link">Pesanan Saya</a>
                 @else
                     <a href="{{ route('login') }}" class="nav-link">Masuk</a>

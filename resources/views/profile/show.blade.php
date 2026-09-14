@@ -74,6 +74,32 @@
         {{-- Recent orders --}}
         <div class="card-flat mt-8 animate-fade-up">
             <div class="flex items-center justify-between border-b border-slate-100 p-5 dark:border-white/10">
+                <h2 class="font-display text-lg font-bold">Alamat Saya</h2>
+                <a href="{{ route('addresses.index') }}" class="btn-ghost btn-sm">Kelola</a>
+            </div>
+            @if (! empty($defaultAddress))
+                <div class="px-5 py-4">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold dark:bg-white/10">{{ $defaultAddress->label }}</span>
+                        <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">[Alamat Utama]</span>
+                    </div>
+                    <p class="mt-2 text-sm font-bold">{{ $defaultAddress->recipient_name }} <span class="font-normal text-slate-500">{{ $defaultAddress->phone }}</span></p>
+                    <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">{{ $defaultAddress->address }}, {{ $defaultAddress->district }}, {{ $defaultAddress->city }} {{ $defaultAddress->postal_code }}</p>
+                    @if ($addresses->count() > 1)
+                        <p class="mt-1 text-xs text-slate-400">+ {{ $addresses->count() - 1 }} alamat lainnya</p>
+                    @endif
+                </div>
+            @else
+                <div class="px-5 py-6 text-center">
+                    <p class="text-sm text-slate-500">Belum ada alamat tersimpan.</p>
+                    <a href="{{ route('addresses.create') }}" class="btn-primary btn-sm mt-3">+ Tambah Alamat</a>
+                </div>
+            @endif
+        </div>
+
+        {{-- Recent orders --}}
+        <div class="card-flat mt-8 animate-fade-up">
+            <div class="flex items-center justify-between border-b border-slate-100 p-5 dark:border-white/10">
                 <h2 class="font-display text-lg font-bold">Pesanan Terakhir</h2>
                 <a href="{{ route('orders') }}" class="btn-ghost btn-sm">Lihat Semua</a>
             </div>

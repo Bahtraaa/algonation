@@ -52,15 +52,16 @@
                                 </div>
                             </td>
                             <td>
-                                @if ($entry->product->has_active_flash_sale)
-                                    <del class="text-xs text-slate-400">Rp {{ number_format($entry->product->regular_price, 0, ',', '.') }}</del><br>
-                                    <b>Rp {{ number_format($entry->product->active_price, 0, ',', '.') }}</b>
+                                {{-- Harga selalu dari produk utama + flash sale, bukan dari featured_products --}}
+                                @if ($entry->product->has_flash_sale ?? $entry->product->has_active_flash_sale)
+                                    <del class="text-xs text-slate-400" style="text-decoration: line-through;">Rp {{ number_format($entry->product->original_price ?? $entry->product->price, 0, ',', '.') }}</del><br>
+                                    <b>Rp {{ number_format($entry->product->final_price ?? $entry->product->active_price, 0, ',', '.') }}</b>
                                 @else
-                                    <b>Rp {{ number_format($entry->product->regular_price, 0, ',', '.') }}</b>
+                                    <b>Rp {{ number_format($entry->product->final_price ?? $entry->product->active_price, 0, ',', '.') }}</b>
                                 @endif
                             </td>
                             <td>
-                                @if ($entry->product->has_active_flash_sale)
+                                @if ($entry->product->has_flash_sale ?? $entry->product->has_active_flash_sale)
                                     <span class="badge-warning">FLASH SALE</span>
                                 @else
                                     <span class="text-xs text-slate-400">-</span>
@@ -68,6 +69,19 @@
                             </td>
                             <td>
                                 <div class="flex justify-end gap-1">
+                                    <details class="relative">
+                                        <summary class="btn-ghost btn-sm cursor-pointer list-none" title="Edit">Edit</summary>
+                                        <form method="POST" action="{{ route('admin.featured-products.update', $entry) }}" class="absolute right-0 z-10 mt-2 flex w-64 gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-xl dark:border-white/10 dark:bg-slate-900">
+                                            @csrf
+                                            @method('PUT')
+                                            <select name="product_id" required class="input flex-1">
+                                                @foreach (\App\Models\Product::orderBy('name')->get() as $product)
+                                                    <option value="{{ $product->id }}" {{ $entry->product_id === $product->id ? 'selected' : '' }}>{{ $product->name }}</option>
+                                                @endforeach
+                                            </select>
+                                            <button class="btn-primary btn-sm">Simpan</button>
+                                        </form>
+                                    </details>
                                     <form method="POST" action="{{ route('admin.featured-products.destroy', $entry) }}"
                                         onsubmit="return confirm('Hapus {{ $entry->product->name }} dari produk unggulan?')">
                                         @csrf

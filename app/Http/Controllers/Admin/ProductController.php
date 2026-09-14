@@ -15,6 +15,10 @@ class ProductController extends Controller
 {
     /**
      * Show the product management page (data table).
+     *
+     * Halaman ini HANYA mengelola data utama produk.
+     * Pengelolaan variant dipindah ke menu standalone "Produk Variant"
+     * (ProductVariantController) dan tidak boleh ada form variant di sini.
      */
     public function index(Request $request): View
     {
@@ -32,6 +36,16 @@ class ProductController extends Controller
         $categories = Product::CATEGORIES;
 
         return view('admin.products.index', compact('products', 'categories'));
+    }
+
+    /**
+     * Show the standalone create form (/admin/products/create).
+     */
+    public function create(): View
+    {
+        $categories = Product::CATEGORIES;
+
+        return view('admin.products.create', compact('categories'));
     }
 
     /**
@@ -162,6 +176,7 @@ class ProductController extends Controller
         return [
             'name'        => ['required', 'string', 'max:255'],
             'category'    => ['required', Rule::in(Product::CATEGORIES)],
+            'status'      => ['nullable', Rule::in(Product::STATUSES)],
             'description' => ['nullable', 'string'],
             'stock'       => ['required', 'integer', 'min:0'],
             'price'       => ['required', 'numeric', 'min:0'],

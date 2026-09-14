@@ -49,19 +49,33 @@ class CartController extends Controller
             'flash_sale_id' => ['nullable', 'integer', 'exists:flash_sales,id'],
         ]);
 
-        $product = Product::with('variants', 'activeFlashSale')->findOrFail($data['product_id']);
+        $product = Product::with('variants', 'flashSale', 'activeFlashSale')->findOrFail($data['product_id']);
 
         $variantId = $data['variant_id'] ?? null;
         $variant   = $variantId ? $product->variants->firstWhere('id', $variantId) : null;
 
-        // The cart is server-authoritative about flash-sale pricing: when the
-        // product currently has an active flash sale, that price is ALWAYS used
-        // regardless of whether the client sent a flash_sale_id. This keeps the
-        // price consistent across every page (shop, featured, landing, detail).
-        $flashSale = $product->activeFlashSale;
+        // Satu sumber harga: $product->priceForVariant($variant).
+        // Flash Sale aktif (status=active + now between start/end) selalu menang,
+        // harga asli tidak pernah dimutasi, dan Produk Unggulan memakai logika
+        // yang sama via $product->final_price.
+        $flashSale = $product->flash_sale_price !== null
+            ? ($product->relationLoaded('activeFlashSale') ? $product->getRelation('activeFlashSale') : $product->activeFlashSale)
+            : null;
+        $flashSale = $flashSale ?? ($product->relationLoaded('flashSale') ? $product->getRelation('flashSale') : null);
+        $flashSale = $flashSale && $flashSale->isActive() ? $flashSale : null;
 
-        $price = (float) ($flashSale?->sale_price ?? $variant?->price ?? $product->price);
-        $stock = $flashSale ? min($flashSale->stock, $variant?->stock ?? $product->stock) : ($variant?->stock ?? $product->stock);
+        // Bila stok flash sale habis, kembali ke harga & stok normal agar
+        // produk tetap bisa dibeli (harga ikut revert otomatis).
+        $useFlashPrice = $flashSale && $flashSale->stock > 0;
+
+        $price = $useFlashPrice ? (float) $flashSale->sale_price : $product->priceForVariant($variant);
+        if ($useFlashPrice) {
+            // priceForVariant sudah mengembalikan sale price saat aktif;
+            // pastikan sama persis dengan relasi yang dipakai.
+            $price = (float) $flashSale->sale_price;
+        }
+        $baseStock = $variant?->stock ?? $product->stock;
+        $stock = $useFlashPrice ? min($flashSale->stock, $baseStock) : $baseStock;
 
         if ($stock <= 0) {
             return response()->json([
@@ -84,13 +98,13 @@ class CartController extends Controller
                 'product_id'    => $product->id,
                 'variant_id'    => $variantId,
                 'name'          => $product->name,
-                'variant'       => $variant?->name,
-                'image'         => $product->image_url,
+                'variant'       => $variant?->display_name ?? $variant?->name,
+                'image'         => $variant?->image_url ?? $product->image_url,
                 'price'         => $price,
                 'quantity'      => $quantity,
                 'stock'         => $stock,
                 'category'      => $product->category,
-                'flash_sale_id' => $flashSale?->id,
+                'flash_sale_id' => $useFlashPrice ? $flashSale->id : null,
             ];
         }
 

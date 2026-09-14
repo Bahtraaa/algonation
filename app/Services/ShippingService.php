@@ -7,6 +7,7 @@ use App\Models\ShippingCourier;
 use App\Models\ShippingSetting;
 use App\Models\ShippingZone;
 use App\Models\Transaction;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -39,6 +40,82 @@ class ShippingService
      */
     public const EARTH_RADIUS_KM = 6371;
 
+    /**
+     * Localized country names stored in addresses => English names Nominatim understands.
+     */
+    protected const COUNTRY_ALIASES = [
+        'Amerika Serikat' => 'United States',
+        'Singapura' => 'Singapore',
+        'Jepang' => 'Japan',
+        'Tiongkok' => 'China',
+        'Korea Selatan' => 'South Korea',
+        'Korea Utara' => 'North Korea',
+        'Belanda' => 'Netherlands',
+        'Inggris' => 'United Kingdom',
+        'Jerman' => 'Germany',
+        'Prancis' => 'France',
+        'Spanyol' => 'Spain',
+        'Italia' => 'Italy',
+        'Filipina' => 'Philippines',
+        'Thailand' => 'Thailand',
+        'Vietnam' => 'Vietnam',
+        'Arab Saudi' => 'Saudi Arabia',
+        'Uni Emirat Arab' => 'United Arab Emirates',
+        'Selandia Baru' => 'New Zealand',
+        'Afrika Selatan' => 'South Africa',
+        'Kanada' => 'Canada',
+        'Australia' => 'Australia',
+        'Malaysia' => 'Malaysia',
+        'India' => 'India',
+    ];
+
+    /**
+     * Offline safety net: approximate country centres (capital/centroid) so an
+     * international distance is never silently reported as 0 km when the
+     * geocoding API is unreachable or returns nothing. Keys are lowercase and
+     * cover both Indonesian and English names.
+     *
+     * @var array<string, array{latitude: float, longitude: float}>
+     */
+    protected const COUNTRY_COORDINATES = [
+        'indonesia' => ['latitude' => -2.5, 'longitude' => 118.0],
+        'amerika serikat' => ['latitude' => 39.8, 'longitude' => -98.5],
+        'united states' => ['latitude' => 39.8, 'longitude' => -98.5],
+        'usa' => ['latitude' => 39.8, 'longitude' => -98.5],
+        'singapura' => ['latitude' => 1.35, 'longitude' => 103.8],
+        'singapore' => ['latitude' => 1.35, 'longitude' => 103.8],
+        'malaysia' => ['latitude' => 4.2, 'longitude' => 102.2],
+        'jepang' => ['latitude' => 36.2, 'longitude' => 138.2],
+        'japan' => ['latitude' => 36.2, 'longitude' => 138.2],
+        'tiongkok' => ['latitude' => 35.8, 'longitude' => 104.2],
+        'china' => ['latitude' => 35.8, 'longitude' => 104.2],
+        'korea selatan' => ['latitude' => 36.3, 'longitude' => 127.9],
+        'south korea' => ['latitude' => 36.3, 'longitude' => 127.9],
+        'india' => ['latitude' => 21.0, 'longitude' => 78.0],
+        'australia' => ['latitude' => -25.3, 'longitude' => 133.8],
+        'inggris' => ['latitude' => 54.0, 'longitude' => -2.0],
+        'united kingdom' => ['latitude' => 54.0, 'longitude' => -2.0],
+        'uk' => ['latitude' => 54.0, 'longitude' => -2.0],
+        'belanda' => ['latitude' => 52.2, 'longitude' => 5.3],
+        'netherlands' => ['latitude' => 52.2, 'longitude' => 5.3],
+        'jerman' => ['latitude' => 51.2, 'longitude' => 10.4],
+        'germany' => ['latitude' => 51.2, 'longitude' => 10.4],
+        'prancis' => ['latitude' => 46.6, 'longitude' => 2.4],
+        'france' => ['latitude' => 46.6, 'longitude' => 2.4],
+        'thailand' => ['latitude' => 15.9, 'longitude' => 100.9],
+        'filipina' => ['latitude' => 13.0, 'longitude' => 122.0],
+        'philippines' => ['latitude' => 13.0, 'longitude' => 122.0],
+        'vietnam' => ['latitude' => 14.0, 'longitude' => 108.0],
+        'arab saudi' => ['latitude' => 24.0, 'longitude' => 45.0],
+        'saudi arabia' => ['latitude' => 24.0, 'longitude' => 45.0],
+        'uni emirat arab' => ['latitude' => 24.0, 'longitude' => 54.0],
+        'united arab emirates' => ['latitude' => 24.0, 'longitude' => 54.0],
+        'kanada' => ['latitude' => 56.1, 'longitude' => -106.3],
+        'canada' => ['latitude' => 56.1, 'longitude' => -106.3],
+        'selandia baru' => ['latitude' => -40.9, 'longitude' => 174.9],
+        'new zealand' => ['latitude' => -40.9, 'longitude' => 174.9],
+    ];
+
     // ------------------------------------------------------------------
     // Public façade
     // ------------------------------------------------------------------
@@ -62,7 +139,7 @@ class ShippingService
         $volumetric = $this->volumetricWeight($items, $shippingType);
         $billable = $this->billableWeight($actualWeight, $volumetric);
 
-        $distance = $this->shippingDistance($origin, $destination);
+        ['distance' => $distance, 'estimated' => $distanceEstimated] = $this->shippingDistanceWithFlag($origin, $destination);
 
         $zone = null;
         $rate = 0.0;
@@ -93,6 +170,7 @@ class ShippingService
             'destination_state' => $destination['state'] ?? null,
             'destination_postal_code' => $destination['postal_code'] ?? null,
             'distance' => $distance,
+            'distance_estimated' => $distanceEstimated,
             'actual_weight' => $actualWeight,
             'volumetric_weight' => $volumetric,
             'billable_weight' => $billable,
@@ -173,24 +251,133 @@ class ShippingService
 
     public function shippingDistance(array $origin, array $destination): float
     {
-        $originLat = (float) ($origin['latitude'] ?? 0);
-        $originLon = (float) ($origin['longitude'] ?? 0);
-        $destLat = (float) ($destination['latitude'] ?? 0);
-        $destLon = (float) ($destination['longitude'] ?? 0);
+        return $this->shippingDistanceWithFlag($origin, $destination)['distance'];
+    }
 
-        if ($this->hasValidCoordinates($originLat, $originLon) && $this->hasValidCoordinates($destLat, $destLon)) {
-            $settings = $this->settings();
-            if ($settings && $settings->enable_routing && $settings->routing_provider === 'osrm') {
-                $distance = $this->routingDistance($originLat, $originLon, $destLat, $destLon);
-                if ($distance !== null) {
-                    return round($distance, 2);
-                }
-            }
+    /**
+     * Same as shippingDistance() but also reports whether either endpoint fell
+     * back to country-level coordinates (display-only info, cost is unaffected
+     * for international shipments which price by country/region rate).
+     *
+     * @return array{distance: float, estimated: bool}
+     */
+    public function shippingDistanceWithFlag(array $origin, array $destination): array
+    {
+        $originCoordinates = $this->resolveCoordinates($origin, 'origin');
+        $destinationCoordinates = $this->resolveCoordinates($destination, 'destination');
 
-            return round($this->haversineKm($originLat, $originLon, $destLat, $destLon), 2);
+        if ($originCoordinates === null || $destinationCoordinates === null) {
+            return ['distance' => 0.0, 'estimated' => false];
         }
 
-        return 0.0;
+        $originLat = (float) $originCoordinates['latitude'];
+        $originLon = (float) $originCoordinates['longitude'];
+        $destLat = (float) $destinationCoordinates['latitude'];
+        $destLon = (float) $destinationCoordinates['longitude'];
+
+        $estimated = ($originCoordinates['fallback'] ?? false)
+            || ($destinationCoordinates['fallback'] ?? false);
+
+        $settings = $this->settings();
+        if ($settings && $settings->enable_routing && $settings->routing_provider === 'osrm') {
+            $distance = $this->routingDistance($originLat, $originLon, $destLat, $destLon);
+            if ($distance !== null) {
+                return ['distance' => round($distance, 2), 'estimated' => $estimated];
+            }
+        }
+
+        return ['distance' => round($this->haversineKm($originLat, $originLon, $destLat, $destLon), 2), 'estimated' => $estimated];
+    }
+
+    protected function resolveCoordinates(array $location, string $label): ?array
+    {
+        $latitude = (float) ($location['latitude'] ?? 0);
+        $longitude = (float) ($location['longitude'] ?? 0);
+
+        if ($this->hasValidCoordinates($latitude, $longitude)) {
+            return ['latitude' => $latitude, 'longitude' => $longitude];
+        }
+
+        // Progressive fallback: most specific first, country-only last.
+        // Postal code is deliberately EXCLUDED: a domestic postal code
+        // appended to a foreign city (e.g. "Austin ... 40123") makes
+        // Nominatim return zero results.
+        foreach ($this->buildGeocodeCandidates($location) as $candidate) {
+            $coordinates = $this->geocode($candidate);
+
+            if ($coordinates !== null) {
+                return $coordinates;
+            }
+        }
+
+        // Offline safety net so an international distance is never
+        // silently reported as 0 km when geocoding yields nothing.
+        $fallback = $this->countryFallbackCoordinates((string) ($location['country'] ?? ''));
+
+        if ($fallback !== null) {
+            Log::info('[Shipping] Using country fallback coordinates', [
+                'location' => $label,
+                'country' => $location['country'] ?? null,
+            ]);
+
+            return [...$fallback, 'fallback' => true];
+        }
+
+        Log::warning('[Shipping] Coordinates unavailable after geocoding fallback', [
+            'location' => $label,
+            'query' => implode(' | ', $this->buildGeocodeCandidates($location)),
+        ]);
+
+        return null;
+    }
+
+    /**
+     * Ordered geocode candidates, most specific first.
+     *
+     * @return list<string>
+     */
+    protected function buildGeocodeCandidates(array $location): array
+    {
+        $district = trim((string) ($location['district'] ?? ''));
+        $city = trim((string) ($location['city'] ?? ''));
+        $state = trim((string) ($location['state'] ?? ''));
+        $country = trim((string) ($location['country'] ?? ''));
+
+        $candidates = [];
+
+        if ($district !== '' && $city !== '' && $state !== '' && $country !== '') {
+            $candidates[] = "{$district} {$city} {$state} {$country}";
+        }
+
+        if ($city !== '' && $state !== '' && $country !== '') {
+            $candidates[] = "{$city} {$state} {$country}";
+        }
+
+        if ($city !== '' && $country !== '') {
+            $candidates[] = "{$city} {$country}";
+        }
+
+        if ($state !== '' && $country !== '') {
+            $candidates[] = "{$state} {$country}";
+        }
+
+        if ($country !== '') {
+            $candidates[] = $country;
+        }
+
+        return array_values(array_unique(array_filter(array_map('trim', $candidates))));
+    }
+
+    /**
+     * Approximate country-centre coordinates (offline fallback).
+     *
+     * @return array{latitude: float, longitude: float}|null
+     */
+    protected function countryFallbackCoordinates(string $country): ?array
+    {
+        $key = mb_strtolower(trim($country));
+
+        return self::COUNTRY_COORDINATES[$key] ?? null;
     }
 
     /**
@@ -312,7 +499,9 @@ class ShippingService
      * Resolve a human-readable destination ("City, State, Country") to
      * geographic coordinates via the configured geocoding endpoint.
      * Returns null when no endpoint is configured or the lookup fails so
-     * callers always have a graceful fallback.
+     * callers always have a graceful fallback. Successful lookups are cached
+     * for 30 days; recent misses for 1 hour (respects Nominatim usage policy
+     * and keeps repeated checkout estimates instant).
      *
      * @return array{latitude: float, longitude: float}|null
      */
@@ -324,36 +513,74 @@ class ShippingService
             return null;
         }
 
-        try {
-            $response = Http::timeout(6)
-                ->withHeaders([
-                    'User-Agent' => config('services.nominatim.user_agent', 'ALGO NATION'),
-                    'Accept' => 'application/json',
-                ])
-                ->get($endpoint, [
-                    'q' => $query,
-                    'format' => 'json',
-                    'limit' => 1,
-                ]);
+        foreach ($this->geocodeQueries($query) as $candidate) {
+            $cacheKey = 'shipping.geocode.'.md5(mb_strtolower(trim($candidate)));
 
-            $data = $response->json();
+            $hit = Cache::get($cacheKey);
 
-            if (is_array($data) && isset($data[0]['lat'], $data[0]['lon'])) {
-                $lat = (float) $data[0]['lat'];
-                $lon = (float) $data[0]['lon'];
-
-                if ($this->hasValidCoordinates($lat, $lon)) {
-                    return ['latitude' => $lat, 'longitude' => $lon];
-                }
+            if (is_array($hit) && isset($hit['latitude'], $hit['longitude'])) {
+                return $hit;
             }
-        } catch (\Throwable $e) {
-            Log::warning('[Shipping] Geocoding failed', [
-                'query' => $query,
-                'error' => $e->getMessage(),
-            ]);
+
+            if ($hit === 'MISS') {
+                continue;
+            }
+
+            try {
+                $response = Http::timeout(6)
+                    ->withHeaders([
+                        'User-Agent' => config('services.nominatim.user_agent', 'ALGO NATION'),
+                        'Accept' => 'application/json',
+                    ])
+                    ->get($endpoint, [
+                        'q' => $candidate,
+                        'format' => 'json',
+                        'limit' => 1,
+                    ]);
+
+                $data = $response->ok() ? $response->json() : null;
+
+                if (is_array($data) && isset($data[0]['lat'], $data[0]['lon'])) {
+                    $lat = (float) $data[0]['lat'];
+                    $lon = (float) $data[0]['lon'];
+
+                    if ($this->hasValidCoordinates($lat, $lon)) {
+                        $coordinates = ['latitude' => $lat, 'longitude' => $lon];
+                        Cache::put($cacheKey, $coordinates, now()->addDays(30));
+
+                        return $coordinates;
+                    }
+                }
+
+                Cache::put($cacheKey, 'MISS', now()->addHour());
+            } catch (\Throwable $e) {
+                Log::warning('[Shipping] Geocoding failed', [
+                    'query' => $candidate,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         return null;
+    }
+
+    /**
+     * Nominatim may not understand the localized country names stored in
+     * addresses, so retry with their common English names.
+     *
+     * @return list<string>
+     */
+    protected function geocodeQueries(string $query): array
+    {
+        $queries = [trim($query)];
+
+        foreach (self::COUNTRY_ALIASES as $localized => $english) {
+            if (stripos($query, $localized) !== false) {
+                $queries[] = trim(str_ireplace($localized, $english, $query));
+            }
+        }
+
+        return array_values(array_unique(array_filter($queries)));
     }
 
     // ------------------------------------------------------------------

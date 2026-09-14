@@ -86,6 +86,23 @@ class User extends Authenticatable
     }
 
     /**
+     * Alamat pengiriman milik user.
+     */
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(Address::class)->orderByDesc('is_default')->latest();
+    }
+
+    /**
+     * Alamat utama / default milik user.
+     */
+    public function defaultAddress(): ?Address
+    {
+        return $this->addresses()->where('is_default', true)->first()
+            ?? $this->addresses()->first();
+    }
+
+    /**
      * Avatar / profile initial helper.
      */
     public function getInitialAttribute(): string

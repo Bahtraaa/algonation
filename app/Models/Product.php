@@ -31,6 +31,14 @@ class Product extends Model
     public const LOW_STOCK_THRESHOLD = 5;
 
     /**
+     * Status produk yang tersedia.
+     */
+    public const STATUSES = [
+        'active',
+        'inactive',
+    ];
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
@@ -38,6 +46,7 @@ class Product extends Model
     protected $fillable = [
         'name',
         'category',
+        'status',
         'image',
         'description',
         'stock',
@@ -72,15 +81,81 @@ class Product extends Model
     }
 
     /**
+     * Generic flash-sale relation (unfiltered).
+     *
+     * Produk Unggulan dan seluruh halaman HARUS menentukan keaktifan
+     * flash sale melalui helper isFlashSaleActive() / accessor final_price,
+     * bukan dari relasi ini secara langsung.
+     */
+    public function flashSale(): HasOne
+    {
+        return $this->hasOne(FlashSale::class)->latestOfMany();
+    }
+
+    /**
      * The single (if any) active flash sale for this product.
+     *
+     * Aturan aktif (satu-satunya sumber kebenaran, sesuai spesifikasi):
+     *   flash_sale.status = active
+     *   AND now() berada di antara start_at dan end_at (inklusif).
+     *
+     * Sengaja TIDAK memfilter stok di sini agar harga selalu mengikuti
+     * aturan di atas. Ketersediaan stok ditangani terpisah di cart/checkout.
      */
     public function activeFlashSale(): HasOne
     {
         return $this->hasOne(FlashSale::class)
             ->where('status', 'active')
             ->where('start_at', '<=', now())
-            ->where('end_at', '>', now())
-            ->where('stock', '>', 0);
+            ->where('end_at', '>=', now());
+    }
+
+    /**
+     * Tentukan apakah produk sedang memiliki Flash Sale aktif.
+     *
+     * Memakai relasi yang sudah di-eager-load bila tersedia agar tidak
+     * menambah query (N+1), jika tidak maka query ringan sekali.
+     */
+    public function isFlashSaleActive(): bool
+    {
+        $flashSale = null;
+
+        if ($this->relationLoaded('activeFlashSale') && $this->getRelation('activeFlashSale')) {
+            return true;
+        }
+
+        if ($this->relationLoaded('flashSale')) {
+            $flashSale = $this->getRelation('flashSale');
+        } else {
+            $flashSale = $this->flashSale()->first();
+        }
+
+        if (! $flashSale) {
+            return false;
+        }
+
+        return $flashSale->isActive();
+    }
+
+    /**
+     * Harga untuk varian tertentu (sumber tunggal untuk cart/checkout).
+     *
+     * - Flash Sale aktif => harga Flash Sale (mengalahkan semua varian).
+     * - Selain itu => harga varian (jika ada) atau harga asli produk.
+     */
+    public function priceForVariant($variant = null): float
+    {
+        $flashPrice = $this->flash_sale_price;
+
+        if ($flashPrice !== null) {
+            return $flashPrice;
+        }
+
+        if ($variant && $variant->price !== null) {
+            return (float) $variant->price;
+        }
+
+        return (float) $this->price;
     }
 
     /**
@@ -96,6 +171,10 @@ class Product extends Model
      */
     public function getTotalStockAttribute(): int
     {
+        if ($this->relationLoaded('variants')) {
+            return (int) $this->stock + (int) $this->getRelation('variants')->sum('stock');
+        }
+
         return $this->stock + $this->variants()->sum('stock');
     }
 
@@ -120,6 +199,14 @@ class Product extends Model
      */
     public function getDisplayPriceAttribute(): float
     {
+        if ($this->relationLoaded('variants')) {
+            $cheapest = $this->getRelation('variants')
+                ->whereNotNull('price')
+                ->min('price');
+
+            return (float) ($cheapest ?? $this->price);
+        }
+
         $cheapest = $this->variants()
             ->whereNotNull('price')
             ->orderBy('price')
@@ -138,31 +225,74 @@ class Product extends Model
     }
 
     /**
-     * The currently active price for the product.
+     * Harga asli produk (sumber: kolom products.price).
+     * Tidak pernah diubah oleh Flash Sale maupun Produk Unggulan.
+     */
+    public function getOriginalPriceAttribute(): float
+    {
+        return (float) $this->price;
+    }
+
+    /**
+     * Harga Flash Sale yang sedang aktif, atau null bila tidak ada.
+     */
+    public function getFlashSalePriceAttribute(): ?float
+    {
+        if ($this->relationLoaded('activeFlashSale') && $this->getRelation('activeFlashSale')) {
+            return (float) $this->getRelation('activeFlashSale')->sale_price;
+        }
+
+        if ($this->relationLoaded('flashSale')) {
+            $flashSale = $this->getRelation('flashSale');
+
+            return $flashSale && $flashSale->isActive() ? (float) $flashSale->sale_price : null;
+        }
+
+        $flashSale = $this->activeFlashSale;
+
+        return $flashSale ? (float) $flashSale->sale_price : null;
+    }
+
+    /**
+     * Apakah produk sedang memiliki Flash Sale aktif (aturan spesifikasi).
+     */
+    public function getHasFlashSaleAttribute(): bool
+    {
+        return $this->flash_sale_price !== null;
+    }
+
+    /**
+     * Harga akhir produk — SATU-SATUNYA sumber logika harga.
      *
      * Rule:
-     * - When there is an active Flash Sale => active_price = flash_sale price.
-     * - Otherwise => active_price = regular_price (display price).
+     * - Flash Sale aktif => sale_price.
+     * - Selain itu => display_price (harga termurah varian bila ada,
+     *   jika tidak maka products.price).
      *
-     * This is the SINGLE source of truth used everywhere a price is shown so a
-     * flash sale always affects every page (shop, featured, homepage, search,
-     * detail, cart, checkout) consistently. The regular price is never mutated.
+     * Untuk produk tanpa varian, fallback ini sama persis dengan
+     * $product->price sesuai spesifikasi. Harga asli tidak pernah dimutasi.
+     */
+    public function getFinalPriceAttribute(): float
+    {
+        return $this->flash_sale_price ?? $this->display_price;
+    }
+
+    /**
+     * Alias lama agar seluruh halaman lama tetap konsisten.
+     * active_price SELALU sama dengan final_price (satu sumber).
      */
     public function getActivePriceAttribute(): float
     {
-        $flashSale = $this->activeFlashSale;
-
-        return $flashSale
-            ? (float) $flashSale->sale_price
-            : $this->regular_price;
+        return $this->final_price;
     }
 
     /**
      * Whether the product currently has an active flash sale.
+     * Alias agar kode lama tetap jalan; sama dengan has_flash_sale.
      */
     public function getHasActiveFlashSaleAttribute(): bool
     {
-        return $this->activeFlashSale !== null;
+        return $this->has_flash_sale;
     }
 
     /**

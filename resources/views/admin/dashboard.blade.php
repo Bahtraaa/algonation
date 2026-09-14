@@ -96,7 +96,7 @@
         <div class="card-flat animate-fade-up">
             <div class="flex items-center justify-between border-b border-slate-100 p-5 dark:border-white/10">
                 <h3 class="font-display font-bold">Stok Menipis</h3>
-                <a href="{{ route('admin.stock.index') }}" class="text-xs font-semibold text-primary hover:underline dark:text-primary-soft">Lihat semua</a>
+                <a href="{{ route('admin.products.index') }}" class="text-xs font-semibold text-primary hover:underline dark:text-primary-soft">Lihat semua</a>
             </div>
             <div class="divide-y divide-slate-50 dark:divide-white/5">
                 @forelse ($lowStockProducts as $product)

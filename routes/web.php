@@ -5,11 +5,12 @@ use App\Http\Controllers\Admin\FeaturedProductController;
 use App\Http\Controllers\Admin\FlashSaleController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Admin\ProductVariantController;
 use App\Http\Controllers\Admin\SalesController;
 use App\Http\Controllers\Admin\ShippingController;
-use App\Http\Controllers\Admin\StockController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AddressController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\HomeController;
@@ -53,6 +54,15 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    // Alamat pengiriman milik user (Alamat Saya).
+    Route::get('/addresses', [AddressController::class, 'index'])->name('addresses.index');
+    Route::get('/addresses/create', [AddressController::class, 'create'])->name('addresses.create');
+    Route::post('/addresses', [AddressController::class, 'store'])->name('addresses.store');
+    Route::get('/addresses/{address}/edit', [AddressController::class, 'edit'])->name('addresses.edit');
+    Route::put('/addresses/{address}', [AddressController::class, 'update'])->name('addresses.update');
+    Route::delete('/addresses/{address}', [AddressController::class, 'destroy'])->name('addresses.destroy');
+    Route::post('/addresses/{address}/default', [AddressController::class, 'setDefault'])->name('addresses.default');
 });
 
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
@@ -102,16 +112,19 @@ Route::post('/cart/clear', [CartController::class, 'clear'])->name('cart.clear')
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
 
-    // Product management
-    Route::resource('products', AdminProductController::class)->except(['show', 'create']);
+    // Product management (data utama produk SAJA — tanpa form variant).
+    Route::resource('products', AdminProductController::class)->except(['show']);
     Route::post('products/{product}/stock', [AdminProductController::class, 'addStock'])->name('products.stock');
+
+    // Produk Variant (menu standalone — controller, route, view terpisah).
+    Route::resource('product-variants', ProductVariantController::class)->except(['show']);
+
+    // Legacy nested variant routes (deprecated, dipertahankan agar tidak merusak
+    // integrasi lama — UI admin tidak lagi menggunakannya).
     Route::post('products/{product}/variants', [AdminProductController::class, 'storeVariant'])->name('products.variants.store');
     Route::put('variants/{variant}', [AdminProductController::class, 'updateVariant'])->name('products.variants.update');
     Route::post('variants/{variant}/stock', [AdminProductController::class, 'addVariantStock'])->name('products.variants.stock');
     Route::delete('variants/{variant}', [AdminProductController::class, 'destroyVariant'])->name('products.variants.destroy');
-
-    // Stock report
-    Route::get('stock', [StockController::class, 'index'])->name('stock.index');
 
     // Sales report
     Route::get('sales', [SalesController::class, 'index'])->name('sales.index');
@@ -140,6 +153,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     // Featured products (Produk Unggulan) — references existing products only.
     Route::get('featured-products', [FeaturedProductController::class, 'index'])->name('featured-products.index');
     Route::post('featured-products', [FeaturedProductController::class, 'store'])->name('featured-products.store');
+    Route::put('featured-products/{featuredProduct}', [FeaturedProductController::class, 'update'])->name('featured-products.update');
     Route::delete('featured-products/{featuredProduct}', [FeaturedProductController::class, 'destroy'])->name('featured-products.destroy');
 
     // Shipping configuration (origin, zones, international regions, couriers).

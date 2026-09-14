@@ -100,7 +100,7 @@
                                 <div class="min-w-0 flex-1">
                                     <p class="truncate text-sm font-semibold">{{ $detail->product?->name ?? 'Produk' }}</p>
                                     @if ($detail->variant)
-                                        <p class="text-xs text-slate-500">{{ $detail->variant->name }}</p>
+                                        <p class="text-xs text-slate-500">{{ $detail->variant->display_name }}</p>
                                     @endif
                                     <p class="text-xs text-slate-500">{{ $detail->quantity }} x Rp {{ number_format($detail->subtotal / max($detail->quantity, 1), 0, ',', '.') }}</p>
                                 </div>
@@ -115,10 +115,25 @@
                     </div>
                 </div>
 
-                {{-- Shipping Address --}}
+                {{-- Shipping Address (snapshot — tidak berubah walau alamat akun diedit) --}}
                 <div class="card-flat p-6 animate-fade-up" style="animation-delay: 180ms">
                     <h2 class="mb-3 text-sm font-bold">Alamat Pengiriman</h2>
-                    <p class="whitespace-pre-line text-sm text-slate-600 dark:text-slate-300">{{ $transaction->shipping_address }}</p>
+                    @if ($transaction->has_address_snapshot)
+                        @if ($transaction->shipping_label)
+                            <span class="mb-2 inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold dark:bg-white/10">{{ $transaction->shipping_label }}</span>
+                        @endif
+                        <p class="text-sm font-bold">{{ $transaction->shipping_name }}</p>
+                        <p class="text-sm text-slate-500">{{ $transaction->shipping_phone }}</p>
+                        <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">{{ $transaction->shipping_address }}</p>
+                        <p class="text-sm text-slate-600 dark:text-slate-300">{{ $transaction->shipping_district }}, {{ $transaction->shipping_city }}</p>
+                        <p class="text-sm text-slate-600 dark:text-slate-300">{{ $transaction->shipping_province }}, {{ $transaction->shipping_postal_code }}</p>
+                        <p class="text-sm text-slate-500">{{ $transaction->shipping_country }}</p>
+                        @if ($transaction->shipping_note)
+                            <p class="mt-1 text-xs text-slate-400">Catatan: {{ $transaction->shipping_note }}</p>
+                        @endif
+                    @else
+                        <p class="whitespace-pre-line text-sm text-slate-600 dark:text-slate-300">{{ $transaction->shipping_display }}</p>
+                    @endif
                 </div>
             </div>
 

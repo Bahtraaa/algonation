@@ -87,7 +87,15 @@
                     @endif
                     <div class="col-span-2">
                         <p class="text-xs uppercase tracking-wider text-slate-400">Dikirim Ke</p>
-                        <p class="whitespace-pre-line font-semibold">{{ $transaction->shipping_address }}</p>
+                        @if ($transaction->has_address_snapshot)
+                            @if ($transaction->shipping_label)
+                                <p class="text-xs font-bold text-slate-500">[{{ $transaction->shipping_label }}]</p>
+                            @endif
+                            <p class="font-semibold">{{ $transaction->shipping_name }} ({{ $transaction->shipping_phone }})</p>
+                            <p class="whitespace-pre-line font-semibold">{{ $transaction->shipping_display }}</p>
+                        @else
+                            <p class="whitespace-pre-line font-semibold">{{ $transaction->shipping_display }}</p>
+                        @endif
                     </div>
                     <div class="col-span-2">
                         <p class="text-xs uppercase tracking-wider text-slate-400">Estimasi Tiba</p>
@@ -113,7 +121,7 @@
                                 <td class="py-3">
                                     <span class="font-semibold">{{ $detail->product?->name ?? 'Produk' }}</span>
                                     @if ($detail->variant)
-                                        <span class="block text-xs text-slate-500">{{ $detail->variant->name }}</span>
+                                        <span class="block text-xs text-slate-500">{{ $detail->variant->display_name }}</span>
                                     @endif
                                 </td>
                                 <td class="py-3 text-center">{{ $detail->quantity }}</td>

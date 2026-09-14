@@ -16,13 +16,17 @@ class FeaturedProductController extends Controller
      */
     public function index(): View
     {
-        $featured = FeaturedProduct::with('product.variants', 'product.activeFlashSale')
+        $featured = FeaturedProduct::with([
+                'product.variants',
+                'product.flashSale',
+                'product.activeFlashSale',
+            ])
             ->orderBy('id')
             ->get();
 
         // Products eligible to be featured: everything already in the catalog
         // that is NOT yet featured (no duplicate product rows are ever created).
-        $available = Product::with('activeFlashSale', 'featured')
+        $available = Product::with('flashSale', 'activeFlashSale', 'featured')
             ->orderBy('name')
             ->get()
             ->filter(fn ($product) => ! $product->featured);
@@ -48,6 +52,30 @@ class FeaturedProductController extends Controller
         FeaturedProduct::create(['product_id' => $data['product_id']]);
 
         return back()->with('success', 'Produk unggulan berhasil ditambahkan.');
+    }
+
+    /**
+     * Change which product a featured entry points to.
+     * Harga tidak diminta — otomatis mengikuti Product + Flash Sale.
+     */
+    public function update(Request $request, FeaturedProduct $featuredProduct): RedirectResponse
+    {
+        $data = $request->validate([
+            'product_id' => ['required', 'integer', 'exists:products,id'],
+        ]);
+
+        $exists = FeaturedProduct::query()
+            ->where('product_id', $data['product_id'])
+            ->where('id', '!=', $featuredProduct->id)
+            ->exists();
+
+        if ($exists) {
+            return back()->with('error', 'Produk tersebut sudah menjadi produk unggulan.');
+        }
+
+        $featuredProduct->update(['product_id' => $data['product_id']]);
+
+        return back()->with('success', 'Produk unggulan berhasil diperbarui.');
     }
 
     /**

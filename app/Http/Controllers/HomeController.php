@@ -20,7 +20,7 @@ class HomeController extends Controller
 
         $categories = Product::CATEGORIES;
         $featured = $this->featuredProducts()->take(8);
-        $flashSales = FlashSale::active()->with('product.activeFlashSale')->latest()->get();
+        $flashSales = FlashSale::active()->with('product.flashSale', 'product.activeFlashSale')->latest()->get();
 
         return view('landing', compact('categories', 'featured', 'flashSales'));
     }
@@ -32,7 +32,7 @@ class HomeController extends Controller
     {
         FlashSale::syncAllStatuses();
 
-        $query = Product::with('variants', 'activeFlashSale');
+        $query = Product::with('variants', 'flashSale', 'activeFlashSale');
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
@@ -90,9 +90,9 @@ class HomeController extends Controller
      */
     public function show(Product $product): View
     {
-        $product->load('variants', 'activeFlashSale');
+        $product->load('variants', 'flashSale', 'activeFlashSale');
 
-        $related = Product::with('variants', 'activeFlashSale')
+        $related = Product::with('variants', 'flashSale', 'activeFlashSale')
             ->where('category', $product->category)
             ->where('id', '!=', $product->id)
             ->take(4)
@@ -108,7 +108,7 @@ class HomeController extends Controller
     private function featuredProducts(): Collection
     {
         return FeaturedProduct::query()
-            ->with(['product.variants', 'product.activeFlashSale'])
+            ->with(['product.variants', 'product.flashSale', 'product.activeFlashSale'])
             ->orderBy('id')
             ->get()
             ->pluck('product')

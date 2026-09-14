@@ -42,7 +42,7 @@ class ShippingSeeder extends Seeder
             ['name' => 'Zona 6',            'min_distance_km' => 201,  'max_distance_km' => 500,  'rate_per_kg' => 25000,  'min_charge' => 25000,  'active' => true],
             ['name' => 'Zona 7',            'min_distance_km' => 501,  'max_distance_km' => 700, 'rate_per_kg' => 30000,  'min_charge' => 30000,  'active' => true],
             ['name' => 'Zona 8',            'min_distance_km' => 701,  'max_distance_km' => 1060, 'rate_per_kg' => 35000,  'min_charge' => 35000,  'active' => true],
-            ['name' => 'Zona 9',            'min_distance_km' => 1061,  'max_distance_km' => null, 'rate_per_kg' => 100000,  'min_charge' => 60000,  'active' => true],
+            ['name' => 'Zona 9',            'min_distance_km' => 1061,  'max_distance_km' => null, 'rate_per_kg' => 150000,  'min_charge' => 60000,  'active' => true],
         ];
 
         foreach ($zones as $zone) {
@@ -81,7 +81,7 @@ class ShippingSeeder extends Seeder
             ['country' => 'Korea Selatan', 'region_id' => $asia?->id,     'rate_per_kg' => 180000, 'min_charge' => 150000, 'active' => true],
             ['country' => 'Belanda',   'region_id' => $eropa?->id,        'rate_per_kg' => 250000, 'min_charge' => 200000, 'active' => true],
             ['country' => 'Inggris',   'region_id' => $eropa?->id,        'rate_per_kg' => 280000, 'min_charge' => 220000, 'active' => true],
-            ['country' => 'Amerika Serikat', 'region_id' => $amerikaUtara?->id, 'rate_per_kg' => 300000, 'min_charge' => 250000, 'active' => true],
+            ['country' => 'Amerika Serikat', 'region_id' => $amerikaUtara?->id, 'rate_per_kg' => 900000, 'min_charge' => 710000.00, 'active' => true],
         ];
 
         foreach ($countries as $country) {

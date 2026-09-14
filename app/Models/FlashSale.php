@@ -37,14 +37,33 @@ class FlashSale extends Model
         return $this->belongsTo(Product::class);
     }
 
+    /**
+     * Apakah flash sale ini aktif menurut aturan spesifikasi:
+     *   status = active AND now() di antara start_at dan end_at (inklusif).
+     */
+    public function isActive(): bool
+    {
+        if ($this->status !== 'active') {
+            return false;
+        }
+
+        $now = Carbon::now(config('app.timezone'));
+
+        return $now->between($this->start_at, $this->end_at);
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         $now = Carbon::now(config('app.timezone'));
 
         return $query->where('status', 'active')
             ->where('start_at', '<=', $now)
-            ->where('end_at', '>', $now)
-            ->where('stock', '>', 0);
+            ->where('end_at', '>=', $now);
+    }
+
+    public function getIsActiveAttribute(): bool
+    {
+        return $this->isActive();
     }
 
     public function syncStatus(): self

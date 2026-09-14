@@ -73,7 +73,7 @@
                         @if ($badge)
                             <span class="absolute left-3 top-3 bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-ink shadow-sm">{{ $badge }}</span>
                         @endif
-                        @if ($product->has_active_flash_sale)
+                        @if ($product->has_flash_sale ?? $product->has_active_flash_sale)
                             <span class="absolute right-3 top-3 bg-primary px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">FLASH SALE</span>
                         @endif
                         <div class="absolute inset-x-3 bottom-3 flex translate-y-2 gap-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">

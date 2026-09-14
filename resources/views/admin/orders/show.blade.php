@@ -37,7 +37,7 @@
                                 <div class="min-w-0 flex-1">
                                     <p class="truncate text-sm font-semibold">{{ $detail->product?->name ?? 'Produk' }}</p>
                                     @if ($detail->variant)
-                                        <p class="text-xs text-slate-500">{{ $detail->variant->name }}</p>
+                                        <p class="text-xs text-slate-500">{{ $detail->variant->display_name }}</p>
                                     @endif
                                     <p class="text-xs text-slate-500">{{ $detail->quantity }} x Rp {{ number_format($detail->subtotal / max($detail->quantity, 1), 0, ',', '.') }}</p>
                                 </div>
@@ -54,10 +54,18 @@
                 </div>
             </div>
 
-            {{-- Shipping Address --}}
+            {{-- Shipping Address (snapshot immutable dari checkout) --}}
             <div class="card-flat p-6 animate-fade-up" style="animation-delay: 60ms">
                 <h3 class="mb-3 text-sm font-bold">Alamat Pengiriman</h3>
-                <p class="whitespace-pre-line text-sm text-slate-600 dark:text-slate-300">{{ $transaction->shipping_address }}</p>
+                @if ($transaction->has_address_snapshot)
+                    @if ($transaction->shipping_label)
+                        <span class="mb-2 inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold dark:bg-white/10">{{ $transaction->shipping_label }}</span>
+                    @endif
+                    <p class="text-sm font-bold">{{ $transaction->shipping_name }} <span class="font-normal text-slate-500">{{ $transaction->shipping_phone }}</span></p>
+                    <p class="mt-1 whitespace-pre-line text-sm text-slate-600 dark:text-slate-300">{{ $transaction->shipping_display }}</p>
+                @else
+                    <p class="whitespace-pre-line text-sm text-slate-600 dark:text-slate-300">{{ $transaction->shipping_display }}</p>
+                @endif
             </div>
         </div>
 

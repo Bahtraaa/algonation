@@ -4,7 +4,7 @@
 
 @section('content')
     <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8"
-        x-data="productPage({{ $product->id }}, {{ $product->active_price }}, {{ $product->has_active_flash_sale ? $product->active_price : 'null' }})">
+        x-data="productPage({{ $product->id }}, {{ $product->final_price ?? $product->active_price }}, {{ ($product->has_flash_sale ?? $product->has_active_flash_sale) ? ($product->final_price ?? $product->active_price) : 'null' }}, '{{ $product->image_url }}')">
 
         {{-- Breadcrumb --}}
         <nav class="mb-6 flex items-center gap-2 text-sm text-slate-500">
@@ -21,7 +21,7 @@
             {{-- Image --}}
             <div class="animate-fade-up">
                 <div class="glass-strong overflow-hidden rounded-4xl p-3">
-                    <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="aspect-square w-full rounded-3xl object-cover">
+                    <img src="{{ $product->image_url }}" :src="selectedImage" alt="{{ $product->name }}" class="aspect-square w-full rounded-3xl object-cover">
                 </div>
             </div>
 
@@ -40,8 +40,8 @@
 
                 <h1 class="mt-3 font-display text-3xl font-extrabold sm:text-4xl">{{ $product->name }}</h1>
 
-                @if ($product->has_active_flash_sale)
-                    <p class="mt-2 text-sm text-slate-400 line-through">Rp {{ number_format($product->regular_price, 0, ',', '.') }}</p>
+                @if ($product->has_flash_sale ?? $product->has_active_flash_sale)
+                    <p class="mt-2 text-sm text-slate-400 line-through" style="text-decoration: line-through;">Rp {{ number_format($product->original_price ?? $product->price, 0, ',', '.') }}</p>
                     <p class="mt-1 font-display text-2xl font-extrabold text-primary dark:text-primary-soft">
                         Rp <span x-text="formatRupiah(selectedPrice).replace('Rp', '')"></span>
                         <span class="badge-warning align-middle text-xs">FLASH SALE</span>
@@ -63,11 +63,12 @@
                         <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                             @foreach ($product->variants as $variant)
                                 <button type="button"
-                                    @click="selectVariant({{ $variant->id }}, {{ $variant->price ?? 'null' }}, {{ $variant->stock }}, '{{ $variant->name }}')"
+                                    @click="selectVariant({{ $variant->id }}, {{ $variant->price ?? 'null' }}, {{ $variant->stock }}, '{{ $variant->display_name }}', '{{ $variant->image_url ?? $product->image_url }}')"
                                     :class="selectedVariantId === {{ $variant->id }} ? 'border-primary bg-primary/10 ring-2 ring-primary' : 'border-slate-200 hover:border-primary dark:border-white/10'"
                                     @if ($variant->is_out_of_stock) disabled class="opacity-50" @endif
                                     class="rounded-xl border p-3 text-left transition-all">
-                                    <span class="block text-sm font-semibold">{{ $variant->name }}</span>
+                                    <img src="{{ $variant->image_url ?? $product->image_url }}" alt="{{ $variant->display_name }}" loading="lazy" class="mb-2 h-16 w-full rounded-lg object-cover">
+                                    <span class="block text-sm font-semibold">{{ $variant->display_name }}</span>
                                     <span class="mt-0.5 block text-xs text-slate-500">
                                         @if ($variant->price)
                                             Rp {{ number_format($variant->price, 0, ',', '.') }}
@@ -142,22 +143,26 @@
 
 @push('scripts')
 <script>
-    function productPage(productId, defaultPrice, salePrice) {
+    function productPage(productId, defaultPrice, salePrice, defaultImage) {
         const hasFlashSale = salePrice !== null;
         return {
             productId,
             defaultPrice,
+            defaultImage,
             hasFlashSale,
             salePrice,
             selectedVariantId: null,
             selectedPrice: hasFlashSale ? salePrice : defaultPrice,
+            selectedImage: defaultImage,
             maxQty: {{ $product->is_out_of_stock ? 0 : max(1, $product->total_stock) }},
             qty: 1,
 
-            selectVariant(id, price, stock, name) {
+            selectVariant(id, price, stock, name, image) {
                 this.selectedVariantId = id;
                 // Flash sale price overrides every variant price while active.
                 this.selectedPrice = this.hasFlashSale ? this.salePrice : (price || this.defaultPrice);
+                // Tampilkan gambar variant; fallback ke gambar produk.
+                this.selectedImage = image || this.defaultImage;
                 this.maxQty = Math.max(1, stock);
                 this.qty = 1;
             }

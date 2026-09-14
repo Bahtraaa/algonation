@@ -93,7 +93,7 @@
                     <td>{{ $t->user?->name ?? '-' }}</td>
                     <td>
                         @foreach ($t->details as $d)
-                            <div>{{ $d->product?->name ?? 'Produk' }}{{ $d->variant ? ' ('.$d->variant->name.')' : '' }} × {{ $d->quantity }}</div>
+                            <div>{{ $d->product?->name ?? 'Produk' }}{{ $d->variant ? ' ('.$d->variant->display_name.')' : '' }} × {{ $d->quantity }}</div>
                         @endforeach
                     </td>
                     <td><span class="status status-{{ $t->payment_status ?? 'pending' }}">{{ ucfirst($t->payment_status ?? 'pending') }}</span></td>

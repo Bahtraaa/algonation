@@ -13,7 +13,10 @@ class CartService
      */
     public function count(array $cart): int
     {
-        return array_sum(array_column($cart, 'quantity'));
+        return (int) array_sum(array_map(
+            fn ($cartItem) => (int) ($cartItem['quantity'] ?? 0),
+            $cart
+        ));
     }
 
     /**
@@ -22,7 +25,7 @@ class CartService
     public function subtotal(array $cart): float
     {
         return round(array_sum(array_map(
-            fn ($cartItem) => $cartItem['price'] * $cartItem['quantity'],
+            fn ($cartItem) => (float) ($cartItem['price'] ?? 0) * (int) ($cartItem['quantity'] ?? 0),
             $cart
         )), 2);
     }

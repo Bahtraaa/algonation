@@ -25,10 +25,20 @@ class Transaction extends Model
      */
     protected $fillable = [
         'user_id',
+        'address_id',
         'total_price',
         'shipping_cost',
         'payment_method',
         'shipping_address',
+        'shipping_name',
+        'shipping_phone',
+        'shipping_country',
+        'shipping_province',
+        'shipping_city',
+        'shipping_district',
+        'shipping_postal_code',
+        'shipping_note',
+        'shipping_label',
         'status',
         'payment_status',
         'paid_at',
@@ -89,11 +99,54 @@ class Transaction extends Model
     }
 
     /**
+     * Alamat yang dipilih saat checkout (bisa null jika alamat dihapus —
+     * snapshot di bawah tetap menyimpan histori).
+     */
+    public function address(): BelongsTo
+    {
+        return $this->belongsTo(Address::class);
+    }
+
+    /**
      * Get the details for the transaction.
      */
     public function details(): HasMany
     {
         return $this->hasMany(TransactionDetail::class);
+    }
+
+    /**
+     * Apakah order ini punya snapshot alamat baru (hasil fitur Alamat Saya)?
+     * Order lama hanya punya kolom shipping_address teks.
+     */
+    public function getHasAddressSnapshotAttribute(): bool
+    {
+        return ! empty($this->shipping_name) || ! empty($this->shipping_phone);
+    }
+
+    /**
+     * Alamat pengiriman untuk ditampilkan — prioritaskan snapshot baru,
+     * fallback ke kolom shipping_address lama.
+     */
+    public function getShippingDisplayAttribute(): string
+    {
+        if ($this->has_address_snapshot) {
+            $lines = array_filter([
+                $this->shipping_name.($this->shipping_phone ? ' ('.$this->shipping_phone.')' : ''),
+                $this->shipping_address,
+                trim(implode(', ', array_filter([$this->shipping_district, $this->shipping_city]))),
+                trim(implode(', ', array_filter([
+                    $this->shipping_province,
+                    $this->shipping_postal_code,
+                ]))),
+                $this->shipping_country,
+                $this->shipping_note ? 'Catatan: '.$this->shipping_note : null,
+            ]);
+
+            return implode("\n", $lines);
+        }
+
+        return (string) $this->shipping_address;
     }
 
     /**

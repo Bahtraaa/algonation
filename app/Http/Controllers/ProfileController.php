@@ -27,7 +27,10 @@ class ProfileController extends Controller
 
         $recentOrders = (clone $transactionQuery)->latest()->take(5)->get();
 
-        return view('profile.show', compact('user', 'totalOrders', 'totalSpent', 'pendingOrders', 'recentOrders'));
+        $addresses = $user->addresses()->get();
+        $defaultAddress = $addresses->firstWhere('is_default', true) ?? $addresses->first();
+
+        return view('profile.show', compact('user', 'totalOrders', 'totalSpent', 'pendingOrders', 'recentOrders', 'addresses', 'defaultAddress'));
     }
 
     /**

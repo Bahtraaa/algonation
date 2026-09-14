@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Address;
 use App\Models\FlashSale;
 use App\Models\Product;
 use App\Models\Transaction;
@@ -17,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -31,26 +33,44 @@ class CheckoutController extends Controller
 
     /**
      * Show the checkout page with the current cart.
+     * Alamat default otomatis dipilih — user tidak perlu mengetik ulang.
      */
-    public function show(Request $request): View
+    public function show(Request $request): View|RedirectResponse
     {
         $cart = $request->session()->get('cart', []);
 
         if (empty($cart)) {
-            return view('cart.empty');
+            return redirect()->route('shop')->with('error', 'Keranjang Anda kosong. Silakan tambahkan produk terlebih dahulu.');
+        }
+
+        $user = Auth::user();
+
+        if (! $user instanceof User) {
+            return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu untuk checkout.');
         }
 
         $subtotal = $this->cartService->subtotal($cart);
         $shippingItems = $this->shippingItems($cart);
 
-        // Destination is unknown until the user fills the address form, so
-        // shipping is displayed/recomputed once a destination is given.
-        return view('checkout.index', compact('cart', 'subtotal', 'shippingItems'));
+        $addresses = $user->addresses()->get();
+        $defaultAddress = $addresses->firstWhere('is_default', true) ?? $addresses->first();
+
+        // Dukung ?address_id= (mis. setelah tambah alamat dari checkout).
+        $selectedAddress = $defaultAddress;
+        if ($request->filled('address_id')) {
+            $requested = $addresses->firstWhere('id', (int) $request->query('address_id'));
+            if ($requested) {
+                $selectedAddress = $requested;
+            }
+        }
+
+        return view('checkout.index', compact('cart', 'subtotal', 'shippingItems', 'addresses', 'defaultAddress', 'selectedAddress'));
     }
 
     /**
-     * Server-side shipping estimate for the address the user has entered.
-     * Frontend only DISPLAYS this; the final cost is recomputed at store().
+     * Server-side shipping estimate untuk alamat yang DIPILIH user.
+     * Frontend hanya DISPLAY; ongkir final dihitung ulang di store().
+     * Mendukung address_id (utama) dan fallback country/city/state (legacy).
      */
     public function estimateShipping(Request $request): JsonResponse
     {
@@ -60,11 +80,33 @@ class CheckoutController extends Controller
             return response()->json(['error' => 'Keranjang Anda kosong.'], 422);
         }
 
-        $data = $request->validate([
-            'country' => ['required', 'string', 'max:120'],
-            'city' => ['required', 'string', 'max:120'],
-            'state' => ['nullable', 'string', 'max:120'],
-        ]);
+        // Jalur utama: hitung ongkir dari alamat tersimpan milik user.
+        if ($request->filled('address_id')) {
+            $user = Auth::user();
+
+            if (! $user instanceof User) {
+                return response()->json(['error' => 'Silakan login terlebih dahulu.'], 403);
+            }
+
+            $validated = $request->validate([
+                'address_id' => [
+                    'required', 'integer',
+                    Rule::exists('addresses', 'id')->where('user_id', $user->id),
+                ],
+            ]);
+
+            $address = Address::where('id', $validated['address_id'])
+                ->where('user_id', $user->id)
+                ->firstOrFail();
+
+            $data = $this->dataFromAddress($address);
+        } else {
+            $data = $request->validate([
+                'country' => ['required', 'string', 'max:120'],
+                'city' => ['required', 'string', 'max:120'],
+                'state' => ['nullable', 'string', 'max:120'],
+            ]);
+        }
 
         $items = $this->shippingItems($cart);
         $destination = $this->destination($data);
@@ -77,7 +119,7 @@ class CheckoutController extends Controller
 
         if ($rateUnavailable) {
             return response()->json([
-                'error' => 'Ongkos kirim tidak dapat dihitung untuk tujuan tersebut. Periksa kembali alamat atau hubungi admin.',
+                'error' => 'Sedang tidak dapat pengiriman ke alamat tersebut. Mohon maaf atas tidak kenyamanannya. Silakan hubungi admin untuk bantuan.',
             ], 422);
         }
 
@@ -88,6 +130,7 @@ class CheckoutController extends Controller
             'destination_country' => $estimate['destination_country'],
             'destination_city' => $estimate['destination_city'],
             'distance' => $estimate['distance'],
+            'distance_estimated' => $estimate['distance_estimated'] ?? false,
             'actual_weight' => $estimate['actual_weight'],
             'volumetric_weight' => $estimate['volumetric_weight'],
             'billable_weight' => $estimate['billable_weight'],
@@ -103,6 +146,7 @@ class CheckoutController extends Controller
     /**
      * Create a Midtrans Snap order and return the snap token as JSON.
      *
+     * Alamat diambil dari address_id milik user (bukan ketikan manual).
      * The ongkir is RECOMPUTED here on the server (source of truth) using the
      * ShippingService — the client never supplies distance, weight, zone, rate
      * or cost. A shipping snapshot is stored on the order so later changes in
@@ -120,20 +164,36 @@ class CheckoutController extends Controller
 
         $user = Auth::user();
 
-        if (! $user) {
+        if (! $user instanceof User) {
             abort(403);
         }
 
-        $data = $request->validate([
-            'full_name' => ['required', 'string', 'max:255'],
-            'phone' => ['required', 'string', 'max:20'],
-            'address' => ['required', 'string', 'max:500'],
-            'country' => ['required', 'string', 'max:120'],
-            'state' => ['nullable', 'string', 'max:120'],
-            'city' => ['required', 'string', 'max:120'],
-            'postal_code' => ['nullable', 'string', 'max:10'],
-            'notes' => ['nullable', 'string', 'max:500'],
+        // User wajib punya alamat tersimpan.
+        if ($user->addresses()->count() === 0) {
+            return response()->json(['error' => 'Silakan tambahkan alamat pengiriman terlebih dahulu.'], 422);
+        }
+
+        // address_id harus benar-benar milik user yang sedang login.
+        // Jangan pernah percaya user_id dari request — ambil dari auth().
+        $validated = $request->validate([
+            'address_id' => [
+                'required', 'integer',
+                Rule::exists('addresses', 'id')->where('user_id', $user->id),
+            ],
+        ], [
+            'address_id.required' => 'Silakan pilih alamat pengiriman terlebih dahulu.',
+            'address_id.exists' => 'Alamat yang dipilih tidak valid.',
         ]);
+
+        $address = Address::where('id', $validated['address_id'])
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (! $address) {
+            return response()->json(['error' => 'Alamat yang dipilih tidak valid.'], 422);
+        }
+
+        $data = $this->dataFromAddress($address);
 
         $items = $this->shippingItems($cart);
         $destination = $this->destination($data);
@@ -200,6 +260,7 @@ class CheckoutController extends Controller
 
             $items,
             $data,
+            $address,
             $subtotal,
             $shipping,
             $shippingCost,
@@ -209,16 +270,27 @@ class CheckoutController extends Controller
         ) {
             $transaction = Transaction::create([
                 'user_id' => $user->id,
+                'address_id' => $address->id,
                 'total_price' => $subtotal,
                 'shipping_cost' => $shippingCost,
                 'payment_method' => 'midtrans',
                 'shipping_address' => trim(
                     $data['full_name']."\n".
                     $data['phone']."\n".
-                    $data['address'].', '.($data['state'] ? $data['state'].', ' : '').$data['city'].' '.($data['postal_code'] ?? '')."\n".
+                    $data['address'].', '.$data['district'].', '.($data['state'] ? $data['state'].', ' : '').$data['city'].' '.($data['postal_code'] ?? '')."\n".
                     $data['country']."\n".
                     ($data['notes'] ?? '')
                 ),
+                // Snapshot alamat — tetap tersimpan walau user mengedit alamat akun.
+                'shipping_name' => $address->recipient_name,
+                'shipping_phone' => $address->phone,
+                'shipping_country' => $address->country,
+                'shipping_province' => $address->province,
+                'shipping_city' => $address->city,
+                'shipping_district' => $address->district,
+                'shipping_postal_code' => $address->postal_code,
+                'shipping_note' => $address->note,
+                'shipping_label' => $address->label,
                 'status' => 'pending_payment',
                 'payment_status' => 'pending',
                 'payment_due_at' => now()->addMinutes(Transaction::PAYMENT_DURATION_MINUTES),
@@ -271,6 +343,7 @@ class CheckoutController extends Controller
             'transaction_id' => $transaction->id,
             'midtrans_order_id' => $orderId,
             'user_id' => $user->id,
+            'address_id' => $address->id,
             'gross_amount' => $grossAmount,
             'shipping_cost' => $shippingCost,
         ]);
@@ -296,7 +369,7 @@ class CheckoutController extends Controller
     {
         $productIds = array_values(array_unique(array_column($cart, 'product_id')));
 
-        $products = Product::with('variants', 'activeFlashSale')
+        $products = Product::with('variants', 'flashSale', 'activeFlashSale')
             ->whereIn('id', $productIds)
             ->get()
             ->keyBy('id');
@@ -313,18 +386,27 @@ class CheckoutController extends Controller
             $variantId = $item['variant_id'] ?? null;
             $variant = $variantId ? $product->variants->firstWhere('id', $variantId) : null;
 
-            // Server-authoritative pricing: active flash sale wins.
-            $flashSale = $product->activeFlashSale;
-            $price = (float) ($flashSale?->sale_price ?? $variant?->price ?? $product->price);
+            // Server-authoritative pricing: satu sumber via priceForVariant().
+            // Flash Sale aktif (status=active + now between start/end) menang.
+            $candidate = $product->relationLoaded('activeFlashSale')
+                ? $product->getRelation('activeFlashSale')
+                : $product->activeFlashSale;
+            $candidate = $candidate ?? ($product->relationLoaded('flashSale') ? $product->getRelation('flashSale') : null);
+            $flashSale = $candidate && $candidate->isActive() ? $candidate : null;
+            $useFlashPrice = $flashSale && $flashSale->stock > 0;
+            $price = $useFlashPrice ? (float) $flashSale->sale_price : $product->priceForVariant($variant);
+            if (! $useFlashPrice) {
+                $flashSale = null;
+            }
 
             $items[] = [
                 'product_id' => $product->id,
                 'variant_id' => $variantId,
                 'name' => $product->name,
-                'variant' => $variant?->name,
+                'variant' => $variant?->display_name ?? $variant?->name,
                 'quantity' => (int) ($item['quantity'] ?? 1),
                 'price' => $price,
-                'image_url' => $product->image_url,
+                'image_url' => $variant?->image_url ?? $product->image_url,
                 'flash_sale' => $flashSale,
                 'flash_sale_id' => $flashSale?->id,
                 'weight_kg' => $product->weight_kg,
@@ -336,35 +418,48 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Build the destination payload for the shipping calculation, appending
-     * coordinates when geocoding succeeds.
+     * Petakan Address tersimpan ke format data checkout lama
+     * (agar perhitungan ongkir & Midtrans tidak berubah).
+     */
+    private function dataFromAddress(Address $address): array
+    {
+        return [
+            'full_name' => $address->recipient_name,
+            'phone' => $address->phone,
+            'address' => $address->address,
+            'country' => $address->country,
+            'state' => $address->province,
+            'city' => $address->city,
+            'district' => $address->district,
+            'postal_code' => $address->postal_code,
+            'notes' => $address->note,
+        ];
+    }
+
+    /**
+     * Build the destination payload for the shipping calculation.
+     *
+     * No HTTP here on purpose: ShippingService::shippingDistance() resolves
+     * coordinates server-side in ONE place with progressive fallback
+     * (district+city+state+country → … → country-only → offline country
+     * centre) plus result caching. Pre-geocoding here used to double the
+     * Nominatim calls per estimate and poisoned international queries with
+     * the domestic postal code (e.g. "Austin … 40123" → zero results → 0 km).
      *
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     private function destination(array $data): array
     {
-        $city = (string) ($data['city'] ?? '');
-        $state = (string) ($data['state'] ?? '');
-        $country = (string) ($data['country'] ?? 'Indonesia');
-
-        $destination = [
-            'country' => $country,
-            'state' => $state,
-            'city' => $city,
+        return [
+            'country' => (string) ($data['country'] ?? 'Indonesia'),
+            'state' => (string) ($data['state'] ?? ''),
+            'city' => (string) ($data['city'] ?? ''),
+            'district' => (string) ($data['district'] ?? ''),
             'postal_code' => $data['postal_code'] ?? null,
             'latitude' => null,
             'longitude' => null,
         ];
-
-        $coordinates = $this->shippingService->geocode(trim($city.' '.$state.', '.$country));
-
-        if ($coordinates) {
-            $destination['latitude'] = $coordinates['latitude'];
-            $destination['longitude'] = $coordinates['longitude'];
-        }
-
-        return $destination;
     }
 
     /**

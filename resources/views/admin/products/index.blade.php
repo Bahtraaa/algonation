@@ -22,6 +22,9 @@
             </form>
         </div>
         <div class="flex gap-2">
+            <a href="{{ route('admin.products.create') }}" class="btn-outline">
+                Halaman Tambah
+            </a>
             <button type="button" @click="$store.ui.openProductModal()" class="btn-primary">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
                 Tambah Produk
@@ -80,9 +83,17 @@
                         </select>
                     </div>
                     <div>
-                        <label class="label">Harga (Rp)</label>
-                        <input type="number" name="price" value="{{ old('price', 0) }}" min="0" step="1000" required class="input">
+                        <label class="label">Status</label>
+                        <select name="status" class="input">
+                            <option value="active" {{ old('status', 'active') === 'active' ? 'selected' : '' }}>Aktif</option>
+                            <option value="inactive" {{ old('status') === 'inactive' ? 'selected' : '' }}>Nonaktif</option>
+                        </select>
                     </div>
+                </div>
+
+                <div>
+                    <label class="label">Harga Dasar (Rp)</label>
+                    <input type="number" name="price" value="{{ old('price', 0) }}" min="0" step="1000" required class="input">
                 </div>
 
                 <div class="grid gap-4 sm:grid-cols-2">
@@ -126,16 +137,16 @@
         </div>
     </div>
 
-    {{-- Table --}}
+    {{-- Table: Nama Produk, Harga, Kategori, Stok, Status, Aksi (stok dikelola via Produk) --}}
     <div class="table-wrap animate-fade-up">
         <table class="table-base">
             <thead>
                 <tr>
-                    <th>Produk</th>
-                    <th>Kategori</th>
-                    <th>Varian</th>
-                    <th>Stok</th>
+                    <th>Nama Produk</th>
                     <th>Harga</th>
+                    <th>Kategori</th>
+                    <th>Stok</th>
+                    <th>Status</th>
                     <th class="text-right">Aksi</th>
                 </tr>
             </thead>
@@ -148,17 +159,14 @@
                                 <div class="min-w-0">
                                     <p class="truncate font-semibold">{{ $product->name }}</p>
                                     <p class="truncate text-xs text-slate-500">{{ Str::limit($product->description, 40) }}</p>
+                                    @if ($product->variants->isNotEmpty())
+                                        <a href="{{ route('admin.product-variants.index', ['product_id' => $product->id]) }}" class="text-xs font-medium text-primary hover:underline dark:text-primary-soft">{{ $product->variants->count() }} varian →</a>
+                                    @endif
                                 </div>
                             </div>
                         </td>
+                        <td class="font-semibold">Rp {{ number_format($product->display_price, 0, ',', '.') }}</td>
                         <td><x-status-badge :variant="$product->category_class">{{ $product->category }}</x-status-badge></td>
-                        <td>
-                            @if ($product->variants->isNotEmpty())
-                                <span class="text-sm">{{ $product->variants->count() }} varian</span>
-                            @else
-                                <span class="text-xs text-slate-400">-</span>
-                            @endif
-                        </td>
                         <td>
                             @if ($product->is_out_of_stock)
                                 <span class="badge-danger">Habis</span>
@@ -168,7 +176,13 @@
                                 <span class="badge-success">{{ $product->total_stock }}</span>
                             @endif
                         </td>
-                        <td class="font-semibold">Rp {{ number_format($product->display_price, 0, ',', '.') }}</td>
+                        <td>
+                            @if (($product->status ?? 'active') === 'active')
+                                <span class="badge-success">Aktif</span>
+                            @else
+                                <span class="badge-danger">Nonaktif</span>
+                            @endif
+                        </td>
                         <td>
                             <div class="flex justify-end gap-1">
                                 <a href="{{ route('admin.products.edit', $product) }}" class="btn-ghost btn-sm" title="Edit">
